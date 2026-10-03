@@ -43,11 +43,18 @@
 
     ready: function () { return impl().ready(); },
 
-    /* 同步码（云端模式的跨设备钥匙） */
+    /* 同步码（未登录访客的跨设备钥匙） */
     hasCloud: function () { return impl().hasCloud(); },
     getSyncCode: function () { return impl().getSyncCode(); },
     bindSyncCode: function (code) { return impl().bindSyncCode(code); },
     resetSyncCode: function () { return impl().resetSyncCode(); },
+
+    /* 账号（自定义登录） */
+    user: function () { return impl().user(); },
+    loginState: function () { return impl().loginState(); },
+    login: function (u, p) { return impl().login(u, p); },
+    register: function (u, p) { return impl().register(u, p); },
+    logout: function () { return impl().logout(); },
 
     saveReading: function (entry) { return impl().saveReading(entry); },
     listReadings: function (limit) { return impl().listReadings(limit); },

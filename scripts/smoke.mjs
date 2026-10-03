@@ -240,6 +240,12 @@ check(B.mode() === "demo" && !B.isCloud(), "未配置时后端为演示模式");
 check(YTM.backend.impl.cloudbase && YTM.backend.impl.cloudbase.mode === "cloud", "CloudBase 适配器（含微信云开发降级）已加载");
 check(YTM.backend.impl.local && YTM.backend.impl.local.mode === "demo", "本地适配器已加载");
 check(B.getSyncCode() === null, "演示模式无同步码");
+check(B.user() === null, "演示模式无账号");
+const demoState = await B.loginState();
+check(demoState === null, "演示模式登录状态为 null");
+let loginRejected = false;
+await B.login("someone", "123456").catch(function () { loginRejected = true; });
+check(loginRejected, "演示模式登录被拒绝（需配置云端）");
 const demoWishes = await B.listWishes();
 check(demoWishes.length === 3, "演示心事墙返回 3 条示例");
 const posted = await B.postWish("冒烟测试心事", "测试");
@@ -257,7 +263,7 @@ check(wishBody.innerHTML.includes("演示模式"), "心事墙界面显示演示�
 check((wishBody.innerHTML.match(/wish-item/g) || []).length >= 3, "心事墙渲染示例条目");
 fire(elements.get("btn-history"), makeTarget("none"));
 await sleep(20);
-check(elements.get("history-actions").innerHTML.includes("同步设置"), "命运簿含同步设置入口");
+check(elements.get("history-actions").innerHTML.includes("登录 / 云同步"), "命运簿含登录/云同步入口");
 
 console.log(failures === 0 ? "\n端到端冒烟测试通过 ✔" : "\n端到端冒烟测试存在失败 ✗");
 process.exit(failures === 0 ? 0 : 1);

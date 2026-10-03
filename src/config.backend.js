@@ -13,13 +13,16 @@
    1. mp.weixin.qq.com 注册微信小程序（个人主体，免费）
    2. 微信开发者工具 → 导入小程序 → 工具栏点「云开发」开通环境
       （地域选上海，免费额度默认生效）
-   3. 云开发控制台 → 数据库 → 创建集合：wishes / lights / readings
+   3. 云开发控制台 → 数据库 → 创建集合：wishes / lights / readings / users
    4. 每个集合 → 权限设置 → 自定义安全规则，粘贴：
       { "read": true, "write": true }
       （网页端为「未登录模式」，此规则允许所有人读和写；
         游戏代码只新增不修改他人数据，娱乐项目可接受）
-   5. 设置 → 安全配置 → WEB 安全域名：加入你的前端域名
-   6. 把环境 ID（形如 cloud1-xxxxxx）填到下面 envId
+   5. 云开发控制台 → 云函数 → 新建云函数「auth」→ 粘贴部署
+      scripts/cloudfunctions/auth/ 下的 index.js 与 package.json
+      （这是账号注册/登录云函数，不部署则无法注册账号）
+   6. 设置 → 安全配置 → WEB 安全域名：加入你的前端域名
+   7. 把环境 ID（形如 cloud1-xxxxxx）填到下面 envId
    ============================================================ */
 (function (global) {
   "use strict";

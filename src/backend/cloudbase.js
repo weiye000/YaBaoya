@@ -100,6 +100,38 @@
     return Promise.resolve(getSyncCode());
   }
 
+  /* 调用云函数 auth（注册/登录） */
+  function callAuth(action, payload) {
+    return ensureSession().then(function () {
+      var data = { action: action };
+      if (payload) {
+        data.username = payload.username;
+        data.password = payload.password;
+      }
+      return app.callFunction({ name: "auth", data: data });
+    }).then(function (res) {
+      var r = res && res.result;
+      if (!r || r.code !== 0) {
+        throw new Error((r && r.message) || "云函数调用失败");
+      }
+      return r;
+    });
+  }
+
+  var USER_KEY = "ytm_username";
+
+  function rememberUser(name) {
+    try { global.localStorage.setItem(USER_KEY, String(name)); } catch (e) { /* 忽略 */ }
+  }
+
+  function forgetUser() {
+    try { global.localStorage.removeItem(USER_KEY); } catch (e) { /* 忽略 */ }
+  }
+
+  function rememberedUser() {
+    try { return global.localStorage.getItem(USER_KEY); } catch (e) { return null; }
+  }
+
   YTM.backend.impl.cloudbase = {
     mode: "cloud",
 
@@ -112,10 +144,53 @@
     bindSyncCode: bindSyncCode,
     resetSyncCode: resetSyncCode,
 
-    /* 云命运簿（按同步码） */
+    /* ---------------- 账号（自定义登录） ---------------- */
+
+    login: function (username, password) {
+      return callAuth("login", { username: username, password: password }).then(function (r) {
+        return auth.customAuthProvider().signIn(r.ticket).then(function () {
+          rememberUser(r.username);
+          return { username: r.username };
+        });
+      });
+    },
+
+    register: function (username, password) {
+      return callAuth("register", { username: username, password: password }).then(function (r) {
+        return auth.customAuthProvider().signIn(r.ticket).then(function () {
+          rememberUser(r.username);
+          return { username: r.username };
+        });
+      });
+    },
+
+    logout: function () {
+      forgetUser();
+      return auth.signOut();
+    },
+
+    /* 同步读取：当前账号名（本地记忆，配合 loginState 校验） */
+    user: function () {
+      var name = rememberedUser();
+      return name ? { username: name } : null;
+    },
+
+    /* 异步校验：返回当前登录状态（含 uid）或 null */
+    loginState: function () {
+      return ensureSession().then(function (state) {
+        if (!state || !state.user) return null;
+        return {
+          uid: state.user.uid || null,
+          username: rememberedUser()
+        };
+      }).catch(function () { return null; });
+    },
+
+    /* ---------------- 云命运簿（登录按账号；未登录按同步码） ---------------- */
+
     saveReading: function (entry) {
-      return ensureSession().then(function () {
-        return db.collection("readings").add({
+      return ensureSession().then(function (state) {
+        var data = {
           code: getSyncCode(),
           seed: entry.seed,
           themeTitle: entry.themeTitle,
@@ -124,17 +199,21 @@
           finalCardName: entry.finalCardName,
           payload: JSON.stringify({ reading: entry.reading, result: entry.result }),
           createdAt: Date.now()
-        });
+        };
+        if (state && state.user) data.owner = state.user.uid;
+        return db.collection("readings").add(data);
       });
     },
 
     listReadings: function (limit) {
-      return ensureSession().then(function () {
-        return db.collection("readings")
-          .where({ code: getSyncCode() })
-          .orderBy("createdAt", "desc")
-          .limit(limit || 30)
-          .get();
+      return ensureSession().then(function (state) {
+        var q = db.collection("readings");
+        if (state && state.user) {
+          q = q.where({ owner: state.user.uid });
+        } else {
+          q = q.where({ code: getSyncCode() });
+        }
+        return q.orderBy("createdAt", "desc").limit(limit || 30).get();
       }).then(function (res) {
         return (res.data || []).map(function (row) {
           var payload = JSON.parse(row.payload || "{}");
@@ -154,7 +233,8 @@
       });
     },
 
-    /* 心事墙 */
+    /* ---------------- 心事墙 ---------------- */
+
     postWish: function (text, keyword) {
       return ensureSession().then(function () {
         return db.collection("wishes").add({

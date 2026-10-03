@@ -273,9 +273,9 @@
     if (state.reading && !state.reading._saved) {
       var entry = YTM.ui.storage.addReading(state.reading, state.result);
       state.reading._saved = true;
-      /* 已配置云端且有同步码时写入云端（失败静默，本地记录不受影响） */
-      if (YTM.backend && YTM.backend.api &&
-          YTM.backend.api.hasCloud() && YTM.backend.api.getSyncCode()) {
+      /* 已配置云端时写入云端（登录按账号、访客按同步码；失败静默，本地记录不受影响） */
+      if (YTM.backend && YTM.backend.api && YTM.backend.api.hasCloud() &&
+          (YTM.backend.api.user() || YTM.backend.api.getSyncCode())) {
         YTM.backend.api.saveReading(entry).catch(function () {});
       }
     }
@@ -482,7 +482,7 @@
       (done ? '<p class="collection-badge">✦ 秘典之证 · 二十二张大阿卡纳已全部收集 ✦</p>' : '') +
       '<div class="collection-grid">' + grid + '</div>' +
       '<p class="collection-hint">每次占卜抽到的牌都会进入图鉴 · ' +
-      (YTM.backend.api.getSyncCode() ? "云端同步已开启" : "当前为本地记录") + '</p>';
+      (YTM.backend.api.user() || YTM.backend.api.getSyncCode() ? "云端同步已开启" : "当前为本地记录") + '</p>';
   }
 
   /* ---------------- 命运簿操作区 / 标签页 ---------------- */
@@ -490,13 +490,15 @@
   function renderHistoryActions() {
     var box = $("history-actions");
     if (!box) return;
+    var user = YTM.backend.api.user();
     var code = YTM.backend.api.getSyncCode();
-    var syncLabel = code
-      ? "云同步已开启 · 同步码 " + esc(code)
-      : "云同步未配置（可选，见 README）";
+    var syncLabel = user
+      ? "已登录 · " + esc(user.username) + " · 按账号云同步"
+      : (code ? "访客模式 · 同步码 " + esc(code) : "云同步未配置（可选，见 README）");
     box.innerHTML =
       '<p class="history-sync-line">' + syncLabel + '</p>' +
-      '<button id="btn-account-open" class="history-account-btn" type="button">同步设置</button>' +
+      '<button id="btn-account-open" class="history-account-btn" type="button">' +
+      (user ? "账户与同步" : "登录 / 云同步") + '</button>' +
       '<button id="btn-history-clear" class="history-clear" type="button">清空命运簿</button>';
   }
 
@@ -512,9 +514,9 @@
     if (active === "collection") renderCollection();
   }
 
-  /* ---------------- 云同步设置（同步码） ---------------- */
+  /* ---------------- 云同步设置（账号 + 同步码） ---------------- */
 
-  function renderSync() {
+  function renderSync(state) {
     var body = $("account-body");
     if (!body) return;
     if (!YTM.backend.api.isCloud()) {
@@ -523,32 +525,81 @@
         '<ol class="account-steps">' +
         '<li>mp.weixin.qq.com 注册一个微信小程序（个人主体，免费）</li>' +
         '<li>微信开发者工具 → 导入小程序 → 点「云开发」开通环境（地域选上海）</li>' +
-        '<li>云开发控制台创建 wishes / lights / readings 三个集合，权限用自定义规则 {"read":true,"write":true}</li>' +
+        '<li>云开发控制台创建集合 wishes / lights / readings / users，权限用自定义规则 {"read":true,"write":true}</li>' +
+        '<li>云开发控制台 → 云函数 → 新建云函数「auth」，粘贴 scripts/cloudfunctions/auth 下的两个文件并部署</li>' +
         '<li>「设置 → 安全配置 → WEB 安全域名」加入你的前端域名</li>' +
         '<li>把环境 ID 填入 src/config.backend.js</li>' +
         '</ol>' +
         '<p class="account-note dim">不配置也完全不影响游戏本身，命运簿照常保存在本机。</p>';
       return;
     }
+    if (state && state.username) {
+      body.innerHTML =
+        '<p class="account-user">当前账户：<span class="u-gold">' + esc(state.username) + '</span></p>' +
+        '<div class="account-actions">' +
+        '<button id="btn-sync" class="btn btn-primary btn-wide" type="button">立即同步</button>' +
+        '<button id="btn-logout" class="btn btn-ghost btn-wide" type="button">退出登录</button>' +
+        '</div>' +
+        '<p class="account-note dim">登录状态下，命运簿与图鉴自动按账号同步——换任何设备登录同一账号，数据都在。</p>';
+      return;
+    }
     var code = YTM.backend.api.getSyncCode();
     body.innerHTML =
-      '<p class="account-note">你的同步码（换设备时输入同一串即可拿到同一份命运簿）：</p>' +
-      '<p class="sync-code">' + esc(code) + '</p>' +
       '<div class="account-form">' +
-      '<input id="sync-input" class="account-input" type="text" maxlength="8" placeholder="输入其他设备的同步码进行绑定" autocomplete="off">' +
+      '<input id="account-name" class="account-input" type="text" maxlength="16" placeholder="用户名（2-16 位）" autocomplete="username">' +
+      '<input id="account-pass" class="account-input" type="password" placeholder="密码（6-32 位）" autocomplete="current-password">' +
       '<p id="account-error" class="account-error" hidden></p>' +
       '<div class="account-actions">' +
-      '<button id="btn-bind" class="btn btn-ghost btn-wide" type="button">绑定这个同步码</button>' +
-      '<button id="btn-sync" class="btn btn-primary btn-wide" type="button">立即同步</button>' +
+      '<button id="btn-login" class="btn btn-primary btn-wide" type="button">登录</button>' +
+      '<button id="btn-register" class="btn btn-ghost btn-wide" type="button">注册新账号</button>' +
+      '</div>' +
+      '</div>' +
+      '<p class="history-sync-line">访客模式 · 同步码 ' + esc(code) + '</p>' +
+      '<div class="account-form">' +
+      '<input id="sync-input" class="account-input" type="text" maxlength="8" placeholder="输入其他设备的同步码绑定" autocomplete="off">' +
+      '<div class="account-actions">' +
+      '<button id="btn-bind" class="btn btn-ghost btn-wide" type="button">绑定同步码</button>' +
       '<button id="btn-reset" class="text-link" type="button">更换我的同步码</button>' +
       '</div>' +
       '</div>' +
-      '<p class="account-note dim">同步码就是你的隐私钥匙：它像 Wi-Fi 密码，知道码的人才能看到你的命运簿。</p>';
+      '<p class="account-note dim">注册账号后自动按账号同步；不登录也可用同步码跨设备（像 Wi-Fi 密码一样分享）。</p>';
   }
 
   function openAccount() {
-    renderSync();
+    var body = $("account-body");
+    if (body) body.innerHTML = '<p class="account-note dim">检查登录状态…</p>';
     openModal("modal-account");
+    YTM.backend.api.loginState().then(function (state) {
+      renderSync(state);
+    }).catch(function () {
+      renderSync(null);
+    });
+  }
+
+  function submitAccount(kind) {
+    var nameEl = $("account-name");
+    var passEl = $("account-pass");
+    var errEl = $("account-error");
+    var name = nameEl ? nameEl.value.trim() : "";
+    var pass = passEl ? passEl.value : "";
+    var showErr = function (msg) {
+      if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
+    };
+    if (!/^[\w\u4e00-\u9fa5-]{2,16}$/.test(name)) { showErr("用户名需 2-16 位（字母/数字/中文/下划线）"); return; }
+    if (pass.length < 6 || pass.length > 32) { showErr("密码需 6-32 位"); return; }
+    var btn = kind === "login" ? $("btn-login") : $("btn-register");
+    if (btn) { btn.disabled = true; btn.textContent = kind === "login" ? "登录中…" : "注册中…"; }
+    var p = kind === "login" ? YTM.backend.api.login(name, pass) : YTM.backend.api.register(name, pass);
+    p.then(function () {
+      toast(kind === "login" ? "登录成功" : "注册成功，已自动登录");
+      renderHistoryActions();
+      openAccount();
+      syncCloud();
+    }).catch(function (err) {
+      var msg = err && err.message ? err.message : "操作失败";
+      showErr(/云函数调用失败|未就绪/.test(msg) ? "云服务未配置好（检查云函数是否已部署）" : msg);
+      if (btn) { btn.disabled = false; btn.textContent = kind === "login" ? "登录" : "注册新账号"; }
+    });
   }
 
   function bindSync() {
@@ -578,7 +629,8 @@
   }
 
   function syncCloud() {
-    if (!YTM.backend.api.hasCloud() || !YTM.backend.api.getSyncCode()) return;
+    if (!YTM.backend.api.hasCloud()) return;
+    if (!YTM.backend.api.user() && !YTM.backend.api.getSyncCode()) return;
     var btn = $("btn-sync");
     if (btn) { btn.disabled = true; btn.textContent = "同步中…"; }
     var local = YTM.ui.storage.getHistory();
@@ -834,6 +886,18 @@
         return;
       }
       if (e.target.closest("#btn-account-open")) { openAccount(); return; }
+      if (e.target.closest("#btn-login")) { submitAccount("login"); return; }
+      if (e.target.closest("#btn-register")) { submitAccount("register"); return; }
+      if (e.target.closest("#btn-logout")) {
+        YTM.backend.api.logout().then(function () {
+          toast("已退出登录");
+          renderSync(null);
+          renderHistoryActions();
+        }).catch(function () {
+          toast("退出失败，稍后再试");
+        });
+        return;
+      }
       if (e.target.closest("#btn-bind")) { bindSync(); return; }
       if (e.target.closest("#btn-reset")) { resetSync(); return; }
       if (e.target.closest("#btn-sync")) { syncCloud(); return; }

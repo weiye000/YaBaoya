@@ -45,6 +45,12 @@
     bindSyncCode: function () { return Promise.reject(new Error("demo")); },
     resetSyncCode: function () { return Promise.resolve(); },
 
+    user: function () { return null; },
+    loginState: function () { return Promise.resolve(null); },
+    login: function () { return Promise.reject(new Error("demo")); },
+    register: function () { return Promise.reject(new Error("demo")); },
+    logout: function () { return Promise.resolve(); },
+
     listReadings: function () { return Promise.resolve([]); },
     saveReading: function () { return Promise.resolve(null); },
 
