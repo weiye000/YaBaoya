@@ -271,8 +271,13 @@
 
   function saveCurrentReading() {
     if (state.reading && !state.reading._saved) {
-      YTM.ui.storage.addReading(state.reading, state.result);
+      var entry = YTM.ui.storage.addReading(state.reading, state.result);
       state.reading._saved = true;
+      /* 已配置云端且有同步码时写入云端（失败静默，本地记录不受影响） */
+      if (YTM.backend && YTM.backend.api &&
+          YTM.backend.api.hasCloud() && YTM.backend.api.getSyncCode()) {
+        YTM.backend.api.saveReading(entry).catch(function () {});
+      }
     }
   }
 
@@ -435,7 +440,253 @@
 
   function openHistory() {
     renderHistory();
+    renderHistoryActions();
+    renderHistoryTabs("list");
     openModal("modal-history");
+  }
+
+  /* ---------------- 研途图鉴（集卡） ---------------- */
+
+  function collectionFromHistory() {
+    var found = {};
+    var items = YTM.ui.storage.getHistory();
+    for (var i = 0; i < items.length; i++) {
+      var reading = items[i].reading;
+      if (!reading || !reading.cards) continue;
+      for (var j = 0; j < reading.cards.length; j++) {
+        found[reading.cards[j].card.id] = true;
+      }
+    }
+    return found;
+  }
+
+  function renderCollection() {
+    var body = $("collection-body");
+    if (!body) return;
+    var found = collectionFromHistory();
+    var cards = YTM.data.cards;
+    var count = 0;
+    for (var i = 0; i < cards.length; i++) if (found[cards[i].id]) count++;
+    var done = count === cards.length;
+    var grid = cards.map(function (c) {
+      var got = !!found[c.id];
+      return '<div class="collection-item' + (got ? " got" : "") + '">' +
+        '<span class="collection-swatch" style="background:linear-gradient(135deg,' + c.palette[0] + ',' + c.palette[1] + ')"></span>' +
+        '<span class="collection-name">' + (got ? esc(c.name) : "？") + '</span>' +
+        '<span class="collection-kw">' + (got ? esc(c.keyword.u) : "未收集") + '</span>' +
+        '</div>';
+    }).join("");
+    body.innerHTML =
+      '<p class="collection-progress">收集进度 <span class="u-gold">' + count + ' / ' + cards.length + '</span></p>' +
+      '<div class="collection-bar"><div class="collection-bar-fill" style="width:' + Math.round(count / cards.length * 100) + '%"></div></div>' +
+      (done ? '<p class="collection-badge">✦ 秘典之证 · 二十二张大阿卡纳已全部收集 ✦</p>' : '') +
+      '<div class="collection-grid">' + grid + '</div>' +
+      '<p class="collection-hint">每次占卜抽到的牌都会进入图鉴 · ' +
+      (YTM.backend.api.getSyncCode() ? "云端同步已开启" : "当前为本地记录") + '</p>';
+  }
+
+  /* ---------------- 命运簿操作区 / 标签页 ---------------- */
+
+  function renderHistoryActions() {
+    var box = $("history-actions");
+    if (!box) return;
+    var code = YTM.backend.api.getSyncCode();
+    var syncLabel = code
+      ? "云同步已开启 · 同步码 " + esc(code)
+      : "云同步未配置（可选，见 README）";
+    box.innerHTML =
+      '<p class="history-sync-line">' + syncLabel + '</p>' +
+      '<button id="btn-account-open" class="history-account-btn" type="button">同步设置</button>' +
+      '<button id="btn-history-clear" class="history-clear" type="button">清空命运簿</button>';
+  }
+
+  function renderHistoryTabs(active) {
+    var tabs = document.querySelectorAll("#history-tabs .history-tab");
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle("selected", tabs[i].getAttribute("data-tab") === active);
+    }
+    var list = $("history-list");
+    var coll = $("collection-body");
+    if (list) list.hidden = active !== "list";
+    if (coll) coll.hidden = active !== "collection";
+    if (active === "collection") renderCollection();
+  }
+
+  /* ---------------- 云同步设置（同步码） ---------------- */
+
+  function renderSync() {
+    var body = $("account-body");
+    if (!body) return;
+    if (!YTM.backend.api.isCloud()) {
+      body.innerHTML =
+        '<p class="account-note">云同步尚未配置。它是免费且可选的：</p>' +
+        '<ol class="account-steps">' +
+        '<li>cloud.tencent.com 微信扫码登录并实名认证</li>' +
+        '<li>开通「云开发 CloudBase」，创建按量付费环境（有免费额度）</li>' +
+        '<li>控制台创建 wishes / lights / readings 三个集合，权限设为「所有用户可读，仅创建者可写」</li>' +
+        '<li>「登录授权」开启匿名登录；「Web 安全域名」加入你的前端域名</li>' +
+        '<li>把环境 ID 填入 src/config.backend.js</li>' +
+        '</ol>' +
+        '<p class="account-note dim">不配置也完全不影响游戏本身，命运簿照常保存在本机。</p>';
+      return;
+    }
+    var code = YTM.backend.api.getSyncCode();
+    body.innerHTML =
+      '<p class="account-note">你的同步码（换设备时输入同一串即可拿到同一份命运簿）：</p>' +
+      '<p class="sync-code">' + esc(code) + '</p>' +
+      '<div class="account-form">' +
+      '<input id="sync-input" class="account-input" type="text" maxlength="8" placeholder="输入其他设备的同步码进行绑定" autocomplete="off">' +
+      '<p id="account-error" class="account-error" hidden></p>' +
+      '<div class="account-actions">' +
+      '<button id="btn-bind" class="btn btn-ghost btn-wide" type="button">绑定这个同步码</button>' +
+      '<button id="btn-sync" class="btn btn-primary btn-wide" type="button">立即同步</button>' +
+      '<button id="btn-reset" class="text-link" type="button">更换我的同步码</button>' +
+      '</div>' +
+      '</div>' +
+      '<p class="account-note dim">同步码就是你的隐私钥匙：它像 Wi-Fi 密码，知道码的人才能看到你的命运簿。</p>';
+  }
+
+  function openAccount() {
+    renderSync();
+    openModal("modal-account");
+  }
+
+  function bindSync() {
+    var input = $("sync-input");
+    var errEl = $("account-error");
+    var code = input ? input.value.trim() : "";
+    if (!/^[A-Za-z0-9]{8}$/.test(code)) {
+      if (errEl) { errEl.textContent = "同步码是 8 位字母数字"; errEl.hidden = false; }
+      return;
+    }
+    YTM.backend.api.bindSyncCode(code).then(function () {
+      toast("已绑定同步码 " + code + "，开始同步");
+      renderSync();
+      renderHistoryActions();
+      syncCloud();
+    }).catch(function (err) {
+      if (errEl) { errEl.textContent = err && err.message ? err.message : "绑定失败"; errEl.hidden = false; }
+    });
+  }
+
+  function resetSync() {
+    YTM.backend.api.resetSyncCode().then(function (code) {
+      toast("已生成新同步码 " + code);
+      renderSync();
+      renderHistoryActions();
+    });
+  }
+
+  function syncCloud() {
+    if (!YTM.backend.api.hasCloud() || !YTM.backend.api.getSyncCode()) return;
+    var btn = $("btn-sync");
+    if (btn) { btn.disabled = true; btn.textContent = "同步中…"; }
+    var local = YTM.ui.storage.getHistory();
+    YTM.backend.api.listReadings(50).then(function (cloud) {
+      var cloudSeeds = {};
+      for (var i = 0; i < cloud.length; i++) cloudSeeds[cloud[i].seed] = true;
+      var pushes = local.filter(function (e) { return !cloudSeeds[e.seed]; })
+        .map(function (e) { return YTM.backend.api.saveReading(e).catch(function () {}); });
+      return Promise.all(pushes).then(function () {
+        return YTM.backend.api.listReadings(50);
+      });
+    }).then(function (cloudAll) {
+      var merged = local.slice();
+      cloudAll.forEach(function (ce) {
+        if (!merged.some(function (le) { return le.seed === ce.seed; })) merged.push(ce);
+      });
+      merged.sort(function (a, b) { return b.ts - a.ts; });
+      merged = merged.slice(0, 30);
+      YTM.ui.storage.clear();
+      merged.forEach(function (e) { YTM.ui.storage.addReading(e.reading, e.result); });
+      toast("同步完成：共 " + merged.length + " 条命运记录");
+      renderHistory();
+      renderCollection();
+      renderHistoryActions();
+      if (btn) { btn.disabled = false; btn.textContent = "立即同步"; }
+    }).catch(function (err) {
+      toast("同步失败：" + (err && err.message ? err.message : "网络异常"));
+      if (btn) { btn.disabled = false; btn.textContent = "立即同步"; }
+    });
+  }
+
+  /* ---------------- 心事墙 ---------------- */
+
+  var litIds = [];
+  function loadLit() {
+    try { litIds = JSON.parse(localStorage.getItem("ytm_lit_cloud") || "[]"); }
+    catch (e) { litIds = []; }
+  }
+  function saveLit() {
+    try { localStorage.setItem("ytm_lit_cloud", JSON.stringify(litIds)); }
+    catch (e) { /* 忽略 */ }
+  }
+
+  function renderWish(list) {
+    var body = $("wish-body");
+    if (!body) return;
+    var mode = YTM.backend.api.mode();
+    var banner = mode === "demo"
+      ? '<p class="wish-banner">未连接云端 · 当前为演示模式：你看到的是示例心事。配置云服务（免费）后，所有玩家的心事都会显示在这里。</p>'
+      : "";
+    var items = (list || []).map(function (w) {
+      var lit = litIds.indexOf(w.id) !== -1 || w.lit;
+      return '<div class="wish-item">' +
+        '<p class="wish-text">' + esc(w.text) + '</p>' +
+        '<p class="wish-meta"><span class="u-gold">' + esc(w.keyword) + '</span>' +
+        (w.mine ? ' · <span class="wish-mine">我的</span>' : '') +
+        ' · ✦ ' + w.lights + '</p>' +
+        '<button class="wish-light' + (lit || w.mine ? " lit" : "") + '" type="button" data-wish-id="' + esc(w.id) + '"' +
+        (lit || w.mine ? " disabled" : "") + '>' + (lit ? "已点亮" : "点亮") + '</button>' +
+        '</div>';
+    }).join("");
+    body.innerHTML = banner +
+      '<div class="wish-form">' +
+      '<textarea id="wish-text" class="q-input" maxlength="140" placeholder="匿名写下此刻的心事……"></textarea>' +
+      '<p class="q-counter"><span id="wish-count">0</span> / 140</p>' +
+      '<button id="btn-wish-post" class="btn btn-primary btn-wide" type="button">匿名投入心事</button>' +
+      '</div>' +
+      '<div id="wish-list" class="wish-list">' + (items || '<p class="history-empty">心事墙还空着。</p>') + '</div>' +
+      '<button id="btn-wish-refresh" class="btn btn-ghost btn-wide" type="button">刷新</button>';
+  }
+
+  function openWish() {
+    loadLit();
+    renderWish([]);
+    openModal("modal-wish");
+    YTM.backend.api.listWishes(20).then(function (list) {
+      renderWish(list);
+    }).catch(function () {
+      renderWish([]);
+    });
+  }
+
+  function postWish() {
+    var ta = $("wish-text");
+    var text = ta ? ta.value.trim() : "";
+    if (!text) { toast("先写点什么吧"); return; }
+    var btn = $("btn-wish-post");
+    if (btn) btn.disabled = true;
+    YTM.backend.api.postWish(text, state.result ? state.result.keyword.word : "研途")
+      .then(function () {
+        toast("心事已投入墙上");
+        openWish();
+      })
+      .catch(function (err) {
+        toast("提交失败：" + (err && err.message ? err.message : "网络异常"));
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  function lightWish(id) {
+    YTM.backend.api.lightWish(id).then(function () {
+      litIds.push(id);
+      saveLit();
+      toast("已点亮 ✦");
+      YTM.backend.api.listWishes(20).then(renderWish).catch(function () {});
+    }).catch(function (err) {
+      toast(err && err.message === "已点亮" ? "已经点亮过啦" : "点亮失败，稍后再试");
+    });
   }
 
   /* ---------------- 全局事件 ---------------- */
@@ -566,11 +817,32 @@
       openHistory();
     });
 
+    $("btn-wish").addEventListener("click", function () {
+      YTM.ui.sound.play("click");
+      openWish();
+    });
+
     /* 弹窗关闭（背景与关闭按钮） */
     document.addEventListener("click", function (e) {
       var closer = e.target.closest("[data-close]");
       if (closer) {
         closeModal(closer.getAttribute("data-close"));
+      }
+      var tab = e.target.closest("#history-tabs .history-tab");
+      if (tab) {
+        renderHistoryTabs(tab.getAttribute("data-tab"));
+        return;
+      }
+      if (e.target.closest("#btn-account-open")) { openAccount(); return; }
+      if (e.target.closest("#btn-bind")) { bindSync(); return; }
+      if (e.target.closest("#btn-reset")) { resetSync(); return; }
+      if (e.target.closest("#btn-sync")) { syncCloud(); return; }
+      if (e.target.closest("#btn-wish-post")) { postWish(); return; }
+      if (e.target.closest("#btn-wish-refresh")) { openWish(); return; }
+      var lightBtn = e.target.closest(".wish-light");
+      if (lightBtn) {
+        lightWish(lightBtn.getAttribute("data-wish-id"));
+        return;
       }
       var historyItem = e.target.closest("#history-list .history-item");
       if (historyItem) {
@@ -592,7 +864,16 @@
       if (e.target.closest("#btn-history-clear")) {
         YTM.ui.storage.clear();
         renderHistory();
+        renderCollection();
         return;
+      }
+    });
+
+    /* 心事墙字数统计 */
+    document.addEventListener("input", function (e) {
+      if (e.target && e.target.id === "wish-text") {
+        var c = $("wish-count");
+        if (c) c.textContent = e.target.value.length;
       }
     });
 
@@ -628,18 +909,6 @@
     document.addEventListener("pointerdown", unlock, { once: true, passive: true });
   }
 
-  /* 命运簿底部清空按钮 */
-  function ensureHistoryClearBtn() {
-    var list = $("history-list");
-    if (!list) return;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "btn-history-clear";
-    btn.className = "history-clear";
-    btn.textContent = "清空命运簿";
-    list.after(btn);
-  }
-
   /* ---------------- 启动 ---------------- */
 
   function showFatal(err) {
@@ -663,7 +932,6 @@
       YTM.ui.sound.init();
       $("btn-sound").classList.toggle("is-muted", !YTM.ui.sound.isEnabled());
       YTM.ui.starfield.init($("starfield"));
-      ensureHistoryClearBtn();
       renderHome();
       renderTheme();
       renderSpread();

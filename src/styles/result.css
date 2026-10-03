@@ -317,3 +317,266 @@
 }
 
 .history-clear:hover { color: #d98d84; }
+
+/* ---------------- 命运簿标签页 / 研途图鉴 ---------------- */
+
+.history-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.history-tab {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 123, 216, 0.35);
+  color: var(--ink-2);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  transition: all var(--t-fast) var(--ease-out);
+}
+
+.history-tab.selected {
+  border-color: var(--gold);
+  color: var(--gold-2);
+  background: rgba(201, 164, 92, 0.12);
+}
+
+.history-sync-line {
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  margin: 12px 0 10px;
+}
+
+.history-account-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 20px;
+  border: 1px solid rgba(201, 164, 92, 0.4);
+  border-radius: 999px;
+  color: var(--gold-2);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  transition: all var(--t-fast) var(--ease-out);
+}
+
+.history-account-btn:hover { background: rgba(201, 164, 92, 0.1); }
+
+.collection-progress {
+  text-align: center;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.collection-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(139, 123, 216, 0.2);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.collection-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-3), var(--gold-2));
+  border-radius: 3px;
+  transition: width 0.6s var(--ease-out);
+}
+
+.collection-badge {
+  text-align: center;
+  color: var(--gold-2);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px;
+}
+
+.collection-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border: 1px solid rgba(139, 123, 216, 0.25);
+  border-radius: var(--radius-s);
+  background: rgba(18, 18, 42, 0.5);
+  opacity: 0.42;
+}
+
+.collection-item.got {
+  opacity: 1;
+  border-color: rgba(201, 164, 92, 0.5);
+  box-shadow: 0 0 12px rgba(201, 164, 92, 0.12);
+}
+
+.collection-swatch {
+  width: 26px;
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 164, 92, 0.6);
+}
+
+.collection-name {
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+}
+
+.collection-kw {
+  font-size: 0.62rem;
+  color: var(--ink-3);
+}
+
+.collection-hint {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--ink-3);
+}
+
+/* ---------------- 云同步 / 心事墙 ---------------- */
+
+.account-note {
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  line-height: 1.8;
+}
+
+.account-note.dim {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  margin-top: 10px;
+  text-align: center;
+}
+
+.account-steps {
+  margin: 10px 0 6px 18px;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  line-height: 2;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 123, 216, 0.35);
+  border-radius: 12px;
+  background: rgba(11, 11, 28, 0.75);
+  color: var(--ink);
+  font-size: 0.92rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  outline: none;
+  transition: border-color var(--t-fast);
+}
+
+.account-input:focus { border-color: rgba(201, 164, 92, 0.65); }
+
+.account-error {
+  color: #d98d84;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.account-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sync-code {
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: var(--gold-2);
+  text-shadow: 0 0 20px rgba(232, 207, 143, 0.4);
+  margin: 8px 0 16px;
+}
+
+.wish-banner {
+  font-size: 0.74rem;
+  line-height: 1.8;
+  color: var(--gold-2);
+  border: 1px solid rgba(201, 164, 92, 0.35);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: rgba(201, 164, 92, 0.07);
+  margin-bottom: 14px;
+}
+
+.wish-form { margin-bottom: 16px; }
+
+.wish-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.wish-item {
+  position: relative;
+  border: 1px solid rgba(139, 123, 216, 0.28);
+  border-radius: var(--radius-s);
+  background: rgba(18, 18, 42, 0.5);
+  padding: 14px 16px;
+}
+
+.wish-text {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--ink);
+  padding-right: 64px;
+}
+
+.wish-meta {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+
+.wish-mine { color: var(--gold-2); }
+
+.wish-light {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 164, 92, 0.5);
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  transition: all var(--t-fast);
+}
+
+.wish-light:hover:not(:disabled) { background: rgba(201, 164, 92, 0.12); }
+
+.wish-light.lit,
+.wish-light:disabled {
+  border-color: rgba(201, 164, 92, 0.25);
+  color: var(--gold-3);
+  cursor: default;
+}

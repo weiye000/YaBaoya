@@ -1,0 +1,213 @@
+/* ============================================================
+   研途秘典 · 腾讯云开发 CloudBase 后端适配器（云端模式）
+   - SDK 按需动态加载（未配置时不加载，零开销）
+   - 登录：匿名登录（无需注册账号）
+   - 云命运簿：readings 集合，按 8 位「同步码」存取（同步码即隐私钥匙）
+   - 心事墙：wishes 集合（全员可读，创建者可写）
+   - 点亮：lights 集合，文档 _id = wishId + "_" + deviceId，天然防重复
+   ============================================================ */
+(function (global) {
+  "use strict";
+  var YTM = global.YTM = global.YTM || {};
+  YTM.backend = YTM.backend || {};
+  YTM.backend.impl = YTM.backend.impl || {};
+
+  var app = null;
+  var db = null;
+  var auth = null;
+  var ready = false;
+  var loading = null;
+  var SCRIPT = "https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js";
+  var CODE_KEY = "ytm_sync_code";
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error("CloudBase SDK 加载失败，请检查网络")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function ensureSession() {
+    return init(YTM.config.backend).then(function (ok) {
+      if (!ok) throw new Error("云服务未就绪");
+      return auth.getLoginState().then(function (state) {
+        if (state) return state;
+        return auth.anonymousAuthProvider().signIn();
+      });
+    });
+  }
+
+  function init(cfg) {
+    if (!cfg || !cfg.envId) return Promise.resolve(false);
+    if (ready) return Promise.resolve(true);
+    if (loading) return loading;
+    loading = loadScript(SCRIPT).then(function () {
+      var tcb = global.cloudbase;
+      if (!tcb) throw new Error("SDK 未就绪");
+      app = tcb.init({ env: cfg.envId });
+      db = app.database();
+      auth = app.auth({ persistence: "local" });
+      ready = true;
+      return true;
+    }).catch(function (err) {
+      console.error("[backend] CloudBase 初始化失败:", err);
+      return false;
+    });
+    return loading;
+  }
+
+  /* 8 位同步码（去掉易混淆字符） */
+  function newCode() {
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var code = "";
+    for (var i = 0; i < 8; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  function getSyncCode() {
+    try {
+      var code = global.localStorage.getItem(CODE_KEY);
+      if (code) return code;
+      code = newCode();
+      global.localStorage.setItem(CODE_KEY, code);
+      return code;
+    } catch (e) {
+      return "DEMO0000";
+    }
+  }
+
+  function bindSyncCode(code) {
+    code = String(code || "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{8}$/.test(code)) return Promise.reject(new Error("同步码格式不对（8 位字母数字）"));
+    try { global.localStorage.setItem(CODE_KEY, code); } catch (e) { /* 忽略 */ }
+    return Promise.resolve(code);
+  }
+
+  function resetSyncCode() {
+    try { global.localStorage.setItem(CODE_KEY, newCode()); } catch (e) { /* 忽略 */ }
+    return Promise.resolve(getSyncCode());
+  }
+
+  YTM.backend.impl.cloudbase = {
+    mode: "cloud",
+
+    ready: function () {
+      return init(YTM.config && YTM.config.backend);
+    },
+
+    hasCloud: function () { return true; },
+    getSyncCode: getSyncCode,
+    bindSyncCode: bindSyncCode,
+    resetSyncCode: resetSyncCode,
+
+    /* 云命运簿（按同步码） */
+    saveReading: function (entry) {
+      return ensureSession().then(function () {
+        return db.collection("readings").add({
+          code: getSyncCode(),
+          seed: entry.seed,
+          themeTitle: entry.themeTitle,
+          spreadName: entry.spreadName,
+          keyword: entry.keyword,
+          finalCardName: entry.finalCardName,
+          payload: JSON.stringify({ reading: entry.reading, result: entry.result }),
+          createdAt: Date.now()
+        });
+      });
+    },
+
+    listReadings: function (limit) {
+      return ensureSession().then(function () {
+        return db.collection("readings")
+          .where({ code: getSyncCode() })
+          .orderBy("createdAt", "desc")
+          .limit(limit || 30)
+          .get();
+      }).then(function (res) {
+        return (res.data || []).map(function (row) {
+          var payload = JSON.parse(row.payload || "{}");
+          return {
+            ts: row.createdAt || Date.now(),
+            seed: row.seed,
+            themeId: payload.reading ? payload.reading.theme.id : null,
+            themeTitle: row.themeTitle || (payload.reading ? payload.reading.theme.title : ""),
+            spreadId: payload.reading ? payload.reading.spread.id : null,
+            spreadName: row.spreadName || (payload.reading ? payload.reading.spread.name : ""),
+            keyword: row.keyword || "",
+            finalCardName: row.finalCardName || "",
+            reading: payload.reading,
+            result: payload.result
+          };
+        });
+      });
+    },
+
+    /* 心事墙 */
+    postWish: function (text, keyword) {
+      return ensureSession().then(function () {
+        return db.collection("wishes").add({
+          text: text,
+          keyword: keyword || "心事",
+          device: YTM.backend.deviceId(),
+          createdAt: Date.now()
+        });
+      }).then(function (res) {
+        return {
+          id: res.id,
+          text: text,
+          keyword: keyword || "心事",
+          lights: 0,
+          mine: true,
+          lit: false
+        };
+      });
+    },
+
+    listWishes: function (limit) {
+      return ensureSession().then(function () {
+        return db.collection("wishes").orderBy("createdAt", "desc").limit(limit || 20).get();
+      }).then(function (res) {
+        return (res.data || []).map(function (row) {
+          return {
+            id: row._id,
+            text: row.text,
+            keyword: row.keyword || "心事",
+            lights: row.lights || 0,
+            mine: row.device === YTM.backend.deviceId(),
+            lit: false /* 由调用方合并本地点亮记录 */
+          };
+        });
+      });
+    },
+
+    /* 点亮：文档 _id 天然防重复（同一设备重复 set 会报错） */
+    lightWish: function (id) {
+      return ensureSession().then(function () {
+        return db.collection("wishes").where({ _id: id }).get();
+      }).then(function (res) {
+        if (!res.data || !res.data.length) throw new Error("这条心事已消失");
+        var docId = id + "_" + YTM.backend.deviceId();
+        return db.collection("lights").doc(docId).set({
+          wishId: id,
+          device: YTM.backend.deviceId(),
+          createdAt: Date.now()
+        }).then(function () {
+          /* 计数同步回 wishes（尽力而为） */
+          return db.collection("lights").where({ wishId: id }).count().then(function (c) {
+            return db.collection("wishes").doc(id).update({ lights: c.total }).catch(function () {});
+          });
+        });
+      }).catch(function (err) {
+        if (err && /已存在|exist|already|document.*exists/i.test(err.message || "")) {
+          throw new Error("已点亮");
+        }
+        throw err;
+      });
+    }
+  };
+})(typeof window !== "undefined" ? window : globalThis);

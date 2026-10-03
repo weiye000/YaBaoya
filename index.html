@@ -27,6 +27,9 @@
     <button id="btn-history" class="topbar-btn" type="button" title="命运簿" aria-label="命运簿">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.2 4.9 7.6 4.4 4.5 4.7v13.4c3.1-.3 5.7.2 7.5 1.8 1.8-1.6 4.4-2.1 7.5-1.8V4.7c-3.1-.3-5.7.2-7.5 1.8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
+    <button id="btn-wish" class="topbar-btn" type="button" title="心事墙" aria-label="心事墙">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.3 4.7 5.2.7-3.8 3.7.9 5.2L12 15.5l-4.6 2.4.9-5.2L4.5 9l5.2-.7L12 3.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </button>
   </header>
 
   <!-- 页面容器 -->
@@ -56,13 +59,39 @@
     </div>
   </div>
 
-  <!-- 命运簿弹窗 -->
+  <!-- 命运簿 / 图鉴弹窗 -->
   <div class="modal" id="modal-history" hidden>
     <div class="modal-backdrop" data-close="modal-history"></div>
     <div class="modal-panel" role="dialog" aria-modal="true" aria-label="命运簿">
       <button class="modal-close" type="button" data-close="modal-history" aria-label="关闭">✕</button>
-      <h3 class="modal-title">命运簿</h3>
+      <h3 class="modal-title">研途秘典</h3>
+      <div class="history-tabs" id="history-tabs">
+        <button class="history-tab selected" type="button" data-tab="list">命运簿</button>
+        <button class="history-tab" type="button" data-tab="collection">研途图鉴</button>
+      </div>
       <div id="history-list" class="history-list"></div>
+      <div id="collection-body" class="collection-body" hidden></div>
+      <div id="history-actions"></div>
+    </div>
+  </div>
+
+  <!-- 心事墙弹窗 -->
+  <div class="modal" id="modal-wish" hidden>
+    <div class="modal-backdrop" data-close="modal-wish"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="心事墙">
+      <button class="modal-close" type="button" data-close="modal-wish" aria-label="关闭">✕</button>
+      <h3 class="modal-title">研途心事墙</h3>
+      <div id="wish-body"></div>
+    </div>
+  </div>
+
+  <!-- 云账户弹窗 -->
+  <div class="modal" id="modal-account" hidden>
+    <div class="modal-backdrop" data-close="modal-account"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="云同步账户">
+      <button class="modal-close" type="button" data-close="modal-account" aria-label="关闭">✕</button>
+      <h3 class="modal-title">云同步 · 同步码</h3>
+      <div id="account-body"></div>
     </div>
   </div>
 
@@ -75,6 +104,11 @@
   <script src="src/game/random.js"></script>
   <script src="src/game/draw.js"></script>
   <script src="src/game/interpretation.js"></script>
+  <!-- 后端（可选：不配置时自动单机模式） -->
+  <script src="src/config.backend.js"></script>
+  <script src="src/backend/local.js"></script>
+  <script src="src/backend/cloudbase.js"></script>
+  <script src="src/backend/adapter.js"></script>
   <!-- 展示层 -->
   <script src="src/ui/starfield.js"></script>
   <script src="src/ui/sound.js"></script>

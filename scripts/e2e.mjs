@@ -252,13 +252,33 @@ try {
   await cdp.eval(`document.querySelector('#btn-again').click()`); await sleep(350);
   check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "移动：再问一次 → 主题页");
 
-  /* 命运簿 */
+  /* 命运簿 + 图鉴 + 云同步设置 */
   await cdp.eval(`document.querySelector('#btn-history').click()`); await sleep(300);
   check(await cdp.eval(`document.querySelectorAll('#history-list .history-item').length === 1`), "移动：命运簿记录 1 次占卜");
+  check(await cdp.eval(`document.querySelectorAll('#history-tabs .history-tab').length === 2`), "移动：命运簿含「命运簿 / 研途图鉴」标签页");
+  await cdp.eval(`document.querySelector('#history-tabs .history-tab[data-tab="collection"]').click()`); await sleep(200);
+  check(await cdp.eval(`document.querySelectorAll('.collection-item').length === 22`), "移动：图鉴展示 22 张卡牌");
+  check(await cdp.eval(`document.querySelectorAll('.collection-item.got').length >= 5`), "移动：本次抽到的牌已收入图鉴");
+  check(await cdp.eval(`document.querySelector('.collection-progress').textContent.includes('5 / 22')`), "移动：图鉴进度为 5/22");
   await cdp.shot("08-history-mobile.png");
+  await cdp.eval(`document.querySelector('#btn-account-open').click()`); await sleep(200);
+  check(await cdp.eval(`document.querySelector('#account-body').textContent.includes('云同步尚未配置')`), "移动：未配置时同步设置显示配置指引");
+  await cdp.shot("09-sync-mobile.png");
+  await cdp.eval(`document.querySelectorAll('[data-close="modal-account"]')[0].click()`); await sleep(200);
+  await cdp.eval(`document.querySelectorAll('[data-close="modal-history"]')[0].click()`); await sleep(200);
+
+  /* 心事墙（演示模式） */
+  await cdp.eval(`document.querySelector('#btn-wish').click()`); await sleep(400);
+  check(await cdp.eval(`document.querySelector('#modal-wish').hidden === false`), "移动：心事墙弹窗打开");
+  check(await cdp.eval(`document.querySelector('#wish-body').textContent.includes('演示模式')`), "移动：演示模式显示提示");
+  check(await cdp.eval(`document.querySelectorAll('#wish-list .wish-item').length >= 3`), "移动：展示示例心事");
+  await cdp.eval(`document.querySelector('#wish-text').value = 'E2E 测试心事'; document.querySelector('#wish-text').dispatchEvent(new Event('input'));`); await sleep(100);
+  await cdp.eval(`document.querySelector('#btn-wish-post').click()`); await sleep(400);
+  check(await cdp.eval(`document.querySelector('#wish-list').textContent.includes('E2E 测试心事')`), "移动：心事发布成功并显示「我的」标记");
+  await cdp.shot("10-wish-mobile.png");
+  await cdp.eval(`document.querySelectorAll('[data-close="modal-wish"]')[0].click()`); await sleep(200);
 
   /* ---------- 布局审计（移动视口 390×844） ---------- */
-  await cdp.eval(`document.querySelectorAll('[data-close="modal-history"]')[0].click()`); await sleep(200);
 
   const overflowOf = `(() => {
     const vw = window.innerWidth;

@@ -92,10 +92,11 @@ globalThis.Image = class {
   set src(v) { this._src = v; setTimeout(() => { if (this.onload) this.onload(); }, 0); }
   get src() { return this._src; }
 };
+const lsStore = new Map();
 globalThis.localStorage = {
-  getItem() { return null; },
-  setItem() {},
-  removeItem() {}
+  getItem(k) { return lsStore.has(k) ? lsStore.get(k) : null; },
+  setItem(k, v) { lsStore.set(k, String(v)); },
+  removeItem(k) { lsStore.delete(k); }
 };
 
 /* ---------- 按 index.html 顺序加载全部脚本 ---------- */
@@ -107,6 +108,10 @@ const files = [
   "src/game/random.js",
   "src/game/draw.js",
   "src/game/interpretation.js",
+  "src/config.backend.js",
+  "src/backend/local.js",
+  "src/backend/cloudbase.js",
+  "src/backend/adapter.js",
   "src/ui/starfield.js",
   "src/ui/sound.js",
   "src/ui/storage.js",
@@ -227,6 +232,30 @@ check(elements.get("modal-share").hidden === false, "分享弹窗已打开");
 fire(screens, makeTarget("#btn-again"));
 await sleep(200);
 check(theme.classList.contains("active"), "「再问一次」回到主题页");
+
+/* ---------- 第三阶段：后端演示模式（未配置 CloudBase） ---------- */
+console.log("  · 后端演示模式");
+const B = YTM.backend.api;
+check(B.mode() === "demo" && !B.isCloud(), "未配置时后端为演示模式");
+check(B.getSyncCode() === null, "演示模式无同步码");
+const demoWishes = await B.listWishes();
+check(demoWishes.length === 3, "演示心事墙返回 3 条示例");
+const posted = await B.postWish("冒烟测试心事", "测试");
+check(posted && posted.mine === true, "演示模式发帖成功");
+const wishesAfter = await B.listWishes();
+check(wishesAfter.length === 4, "发帖后心事墙共 4 条");
+await B.lightWish("demo-1");
+let dupRejected = false;
+await B.lightWish("demo-1").catch(function () { dupRejected = true; });
+check(dupRejected, "重复点亮被拒绝");
+fire(elements.get("btn-wish"), makeTarget("none"));
+await sleep(30);
+const wishBody = elements.get("wish-body");
+check(wishBody.innerHTML.includes("演示模式"), "心事墙界面显示演示模式提示");
+check((wishBody.innerHTML.match(/wish-item/g) || []).length >= 3, "心事墙渲染示例条目");
+fire(elements.get("btn-history"), makeTarget("none"));
+await sleep(20);
+check(elements.get("history-actions").innerHTML.includes("同步设置"), "命运簿含同步设置入口");
 
 console.log(failures === 0 ? "\n端到端冒烟测试通过 ✔" : "\n端到端冒烟测试存在失败 ✗");
 process.exit(failures === 0 ? 0 : 1);
