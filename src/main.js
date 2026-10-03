@@ -744,8 +744,8 @@
       }
     }).catch(function (err) {
       var msg = err && err.message ? err.message : "操作失败";
-      if (/Function not found|FUNCTION_NOT_FOUND|ResourceNotFound|云函数调用失败|未就绪/.test(msg)) {
-        msg = "账号功能暂不可用：云函数未部署。可先匿名进入，或联系开发者。";
+      if (/Function not found|FUNCTION_NOT_FOUND|ResourceNotFound|not found|FunctionName|云函数|未就绪/.test(msg)) {
+        msg = "云函数 auth 未找到或未部署成功：请在开发者工具里粘贴最新代码并「上传并部署：云端安装依赖」（见 README）。原始信息：" + msg;
       }
       showErr(msg);
       if (btn) { btn.disabled = false; btn.textContent = kind === "login" ? "登录" : "注册新账号"; }

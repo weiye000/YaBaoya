@@ -100,6 +100,14 @@
     return Promise.resolve(getSyncCode());
   }
 
+  /* 统一错误提取：SDK 错误对象可能用 message / errMsg / msg / error 任一字段 */
+  function errText(err, prefix) {
+    var t = err && (err.message || err.errMsg || err.msg || err.error);
+    if (t) return String(t);
+    try { t = JSON.stringify(err); } catch (e) { t = ""; }
+    return (prefix || "") + (t && t !== "{}" ? t.slice(0, 200) : "未知错误");
+  }
+
   /* 调用云函数 auth（注册/登录/管理操作；已持有管理员令牌时自动附带） */
   var adminToken = null;
 
@@ -117,6 +125,8 @@
         throw new Error((r && r.message) || "云函数调用失败");
       }
       return r;
+    }).catch(function (err) {
+      throw new Error(errText(err, "云函数："));
     });
   }
 
@@ -155,7 +165,9 @@
         } else {
           adminToken = null;
         }
-        return auth.customAuthProvider().signIn(r.ticket).then(function () {
+        return auth.customAuthProvider().signIn(r.ticket).catch(function (e) {
+          throw new Error("登录凭证签发失败：" + errText(e));
+        }).then(function () {
           rememberUser(r.username);
           return { username: r.username, admin: r.role === "admin" };
         });
@@ -169,7 +181,9 @@
         } else {
           adminToken = null;
         }
-        return auth.customAuthProvider().signIn(r.ticket).then(function () {
+        return auth.customAuthProvider().signIn(r.ticket).catch(function (e) {
+          throw new Error("登录凭证签发失败：" + errText(e));
+        }).then(function () {
           rememberUser(r.username);
           return { username: r.username, admin: r.role === "admin" };
         });
@@ -345,6 +359,28 @@
           return { leaked: true, count: c.total };
         }).catch(function () {
           return { leaked: false };
+        });
+      });
+    },
+
+    /* 认证诊断：逐步尝试并返回每一步的真实结果 */
+    probeAuth: function () {
+      return init(YTM.config.backend).then(function (ok) {
+        if (!ok) return { step: "init", ok: false, err: "SDK 初始化失败" };
+        return auth.getLoginState().then(function (state) {
+          if (state) return { step: "getLoginState", ok: true, hasUser: !!state.user, uid: state.user && state.user.uid };
+          try {
+            var anon = auth.anonymousAuthProvider();
+            return anon.signIn().then(function (s) {
+              return { step: "anonymous", ok: true, uid: s.user && s.user.uid };
+            }).catch(function (e) {
+              return { step: "anonymous", ok: false, err: errText(e) };
+            });
+          } catch (e) {
+            return { step: "anonymous-provider", ok: false, err: errText(e) };
+          }
+        }).catch(function (e) {
+          return { step: "getLoginState", ok: false, err: errText(e) };
         });
       });
     }
