@@ -34,15 +34,28 @@
     });
   }
 
-  /* 建立会话：匿名登录失败（微信云开发环境）自动降级为未登录模式 */
+  /* 建立会话：
+     - 已登录（自定义登录）→ 直接使用
+     - 无效/空登录态 → 清除后走未登录模式
+     - anonymousLogin=false（微信环境）→ 跳过匿名登录，直接未登录模式
+     - 其他 → 尝试匿名登录，失败/空凭证 → 清除并降级未登录模式 */
   function ensureSession() {
     return init(YTM.config.backend).then(function (ok) {
       if (!ok) throw new Error("云服务未就绪");
+      var cfg = YTM.config.backend || {};
       return auth.getLoginState().then(function (state) {
-        if (state) return state;
-        return auth.anonymousAuthProvider().signIn();
+        if (state && state.user && state.user.uid) return state;
+        if (state) {
+          /* 无效/空登录态（如微信环境的伪匿名态）：清掉，避免带坏凭证 */
+          return auth.signOut().catch(function () {}).then(function () { return null; });
+        }
+        if (cfg.anonymousLogin === false) return null; /* 未登录模式 */
+        return auth.anonymousAuthProvider().signIn().then(function (s) {
+          if (s && s.user && s.user.uid) return s;
+          return auth.signOut().catch(function () {}).then(function () { return null; });
+        });
       }).catch(function () {
-        return null; /* 未登录模式：不登录也可读写（依赖集合公开读写规则） */
+        return null; /* 未登录模式 */
       });
     });
   }
@@ -363,16 +376,38 @@
       });
     },
 
-    /* 认证诊断：逐步尝试并返回每一步的真实结果 */
+    /* 认证诊断：逐步尝试并返回每一步的真实结果（含未登录模式下的云函数探测） */
     probeAuth: function () {
       return init(YTM.config.backend).then(function (ok) {
         if (!ok) return { step: "init", ok: false, err: "SDK 初始化失败" };
+        var cfg = YTM.config.backend || {};
         return auth.getLoginState().then(function (state) {
-          if (state) return { step: "getLoginState", ok: true, hasUser: !!state.user, uid: state.user && state.user.uid };
+          if (state && state.user && state.user.uid) {
+            return { step: "logged-in", ok: true, uid: state.user.uid };
+          }
+          if (state) {
+            return auth.signOut().catch(function () {}).then(function () {
+              return { step: "cleared-bad-state", ok: true };
+            });
+          }
+          if (cfg.anonymousLogin === false) {
+            return app.callFunction({
+              name: "auth",
+              data: { action: "login", username: "probe-none", password: "x123456" }
+            }).then(function (res) {
+              return {
+                step: "identityless-callFunction",
+                ok: true,
+                result: res && res.result ? { code: res.result.code, message: res.result.message } : res
+              };
+            }).catch(function (e) {
+              return { step: "identityless-callFunction", ok: false, err: errText(e) };
+            });
+          }
           try {
-            var anon = auth.anonymousAuthProvider();
-            return anon.signIn().then(function (s) {
-              return { step: "anonymous", ok: true, uid: s.user && s.user.uid };
+            return auth.anonymousAuthProvider().signIn().then(function (s) {
+              if (s && s.user && s.user.uid) return { step: "anonymous", ok: true, uid: s.user.uid };
+              return { step: "anonymous-empty", ok: false, err: "匿名登录返回空凭证" };
             }).catch(function (e) {
               return { step: "anonymous", ok: false, err: errText(e) };
             });
