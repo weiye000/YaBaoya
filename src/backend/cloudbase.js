@@ -1,10 +1,14 @@
 /* ============================================================
-   研途秘典 · 腾讯云开发 CloudBase 后端适配器（云端模式）
+   研途秘典 · CloudBase 后端适配器（云端模式）
+   同时兼容：
+   - 腾讯云开发 CloudBase 环境：匿名登录（无感）
+   - 微信云开发环境（小程序云开发，Web 端接入）：未登录模式
+     —— 微信云开发环境通常不支持匿名登录，登录失败自动降级为
+        未登录模式继续执行；此时集合权限需用自定义规则
+        { "read": true, "write": true }（见 README）
    - SDK 按需动态加载（未配置时不加载，零开销）
-   - 登录：匿名登录（无需注册账号）
    - 云命运簿：readings 集合，按 8 位「同步码」存取（同步码即隐私钥匙）
-   - 心事墙：wishes 集合（全员可读，创建者可写）
-   - 点亮：lights 集合，文档 _id = wishId + "_" + deviceId，天然防重复
+   - 心事墙：wishes 集合；点亮：lights 集合（_id 天然防重复）
    ============================================================ */
 (function (global) {
   "use strict";
@@ -30,12 +34,15 @@
     });
   }
 
+  /* 建立会话：匿名登录失败（微信云开发环境）自动降级为未登录模式 */
   function ensureSession() {
     return init(YTM.config.backend).then(function (ok) {
       if (!ok) throw new Error("云服务未就绪");
       return auth.getLoginState().then(function (state) {
         if (state) return state;
         return auth.anonymousAuthProvider().signIn();
+      }).catch(function () {
+        return null; /* 未登录模式：不登录也可读写（依赖集合公开读写规则） */
       });
     });
   }

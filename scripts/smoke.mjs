@@ -237,6 +237,8 @@ check(theme.classList.contains("active"), "「再问一次」回到主题页");
 console.log("  · 后端演示模式");
 const B = YTM.backend.api;
 check(B.mode() === "demo" && !B.isCloud(), "未配置时后端为演示模式");
+check(YTM.backend.impl.cloudbase && YTM.backend.impl.cloudbase.mode === "cloud", "CloudBase 适配器（含微信云开发降级）已加载");
+check(YTM.backend.impl.local && YTM.backend.impl.local.mode === "demo", "本地适配器已加载");
 check(B.getSyncCode() === null, "演示模式无同步码");
 const demoWishes = await B.listWishes();
 check(demoWishes.length === 3, "演示心事墙返回 3 条示例");

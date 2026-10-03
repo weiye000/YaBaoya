@@ -521,10 +521,10 @@
       body.innerHTML =
         '<p class="account-note">云同步尚未配置。它是免费且可选的：</p>' +
         '<ol class="account-steps">' +
-        '<li>cloud.tencent.com 微信扫码登录并实名认证</li>' +
-        '<li>开通「云开发 CloudBase」，创建按量付费环境（有免费额度）</li>' +
-        '<li>控制台创建 wishes / lights / readings 三个集合，权限设为「所有用户可读，仅创建者可写」</li>' +
-        '<li>「登录授权」开启匿名登录；「Web 安全域名」加入你的前端域名</li>' +
+        '<li>mp.weixin.qq.com 注册一个微信小程序（个人主体，免费）</li>' +
+        '<li>微信开发者工具 → 导入小程序 → 点「云开发」开通环境（地域选上海）</li>' +
+        '<li>云开发控制台创建 wishes / lights / readings 三个集合，权限用自定义规则 {"read":true,"write":true}</li>' +
+        '<li>「设置 → 安全配置 → WEB 安全域名」加入你的前端域名</li>' +
         '<li>把环境 ID 填入 src/config.backend.js</li>' +
         '</ol>' +
         '<p class="account-note dim">不配置也完全不影响游戏本身，命运簿照常保存在本机。</p>';
