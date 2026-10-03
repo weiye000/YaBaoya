@@ -100,15 +100,17 @@
     return Promise.resolve(getSyncCode());
   }
 
-  /* 调用云函数 auth（注册/登录） */
-  function callAuth(action, payload) {
+  /* 调用云函数 auth（注册/登录/管理操作；已持有管理员令牌时自动附带） */
+  var adminToken = null;
+
+  function callAuth(action, data) {
     return ensureSession().then(function () {
-      var data = { action: action };
-      if (payload) {
-        data.username = payload.username;
-        data.password = payload.password;
+      var payload = { action: action };
+      if (data) {
+        for (var k in data) payload[k] = data[k];
       }
-      return app.callFunction({ name: "auth", data: data });
+      if (adminToken) payload.adminToken = adminToken;
+      return app.callFunction({ name: "auth", data: payload });
     }).then(function (res) {
       var r = res && res.result;
       if (!r || r.code !== 0) {
@@ -144,29 +146,51 @@
     bindSyncCode: bindSyncCode,
     resetSyncCode: resetSyncCode,
 
-    /* ---------------- 账号（自定义登录） ---------------- */
+    /* ---------------- 账号（自定义登录 + 管理员令牌） ---------------- */
 
     login: function (username, password) {
       return callAuth("login", { username: username, password: password }).then(function (r) {
+        if (r.role === "admin" && r.adminToken) {
+          adminToken = r.adminToken; /* 仅存内存，刷新页面需重新登录 */
+        } else {
+          adminToken = null;
+        }
         return auth.customAuthProvider().signIn(r.ticket).then(function () {
           rememberUser(r.username);
-          return { username: r.username };
+          return { username: r.username, admin: r.role === "admin" };
         });
       });
     },
 
     register: function (username, password) {
       return callAuth("register", { username: username, password: password }).then(function (r) {
+        if (r.role === "admin" && r.adminToken) {
+          adminToken = r.adminToken;
+        } else {
+          adminToken = null;
+        }
         return auth.customAuthProvider().signIn(r.ticket).then(function () {
           rememberUser(r.username);
-          return { username: r.username };
+          return { username: r.username, admin: r.role === "admin" };
         });
       });
     },
 
     logout: function () {
+      adminToken = null;
       forgetUser();
       return auth.signOut();
+    },
+
+    /* 管理员能力（令牌仅存内存；云端逐次校验） */
+    isAdmin: function () { return !!adminToken; },
+    adminStats: function () {
+      if (!adminToken) return Promise.reject(new Error("需要管理员身份"));
+      return callAuth("adminStats");
+    },
+    adminDeleteWish: function (wishId) {
+      if (!adminToken) return Promise.reject(new Error("需要管理员身份"));
+      return callAuth("adminDeleteWish", { wishId: wishId });
     },
 
     /* 同步读取：当前账号名（本地记忆，配合 loginState 校验） */

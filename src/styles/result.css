@@ -540,6 +540,111 @@
   gap: 12px;
 }
 
+/* ---------------- 管理台 ---------------- */
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.admin-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 8px;
+  border: 1px solid rgba(201, 164, 92, 0.35);
+  border-radius: var(--radius-m);
+  background: rgba(18, 18, 42, 0.55);
+}
+
+.admin-stat-n {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  color: var(--gold-2);
+}
+
+.admin-stat-l {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--ink-3);
+}
+
+.admin-section {
+  border-top: 1px solid rgba(201, 164, 92, 0.16);
+  padding-top: 16px;
+}
+
+.admin-section-title {
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(139, 123, 216, 0.25);
+  border-radius: var(--radius-s);
+  background: rgba(18, 18, 42, 0.5);
+}
+
+.admin-row-name {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.admin-row-time {
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.admin-row-text {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.admin-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid rgba(201, 164, 92, 0.6);
+  border-radius: 5px;
+  font-size: 0.62rem;
+  color: var(--gold-2);
+  letter-spacing: 0.1em;
+}
+
+.admin-del {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  border: 1px solid rgba(166, 58, 50, 0.55);
+  border-radius: 999px;
+  color: #d98d84;
+  font-size: 0.72rem;
+  transition: all var(--t-fast);
+}
+
+.admin-del:hover {
+  background: rgba(166, 58, 50, 0.15);
+  border-color: #d98d84;
+}
+
 .wish-banner {
   font-size: 0.74rem;
   line-height: 1.8;

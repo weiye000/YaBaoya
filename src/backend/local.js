@@ -50,6 +50,9 @@
     login: function () { return Promise.reject(new Error("demo")); },
     register: function () { return Promise.reject(new Error("demo")); },
     logout: function () { return Promise.resolve(); },
+    isAdmin: function () { return false; },
+    adminStats: function () { return Promise.reject(new Error("demo")); },
+    adminDeleteWish: function () { return Promise.reject(new Error("demo")); },
 
     listReadings: function () { return Promise.resolve([]); },
     saveReading: function () { return Promise.resolve(null); },

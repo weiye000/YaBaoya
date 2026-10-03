@@ -48,6 +48,77 @@
     }
   }
 
+  /* ---------------- 管理台（仅管理员 Yaya 登录后可见） ---------------- */
+
+  function loadAdminData() {
+    if (!YTM.backend.api.isAdmin()) return;
+    YTM.backend.api.adminStats().then(function (data) {
+      var stats = $("admin-stats");
+      if (stats) {
+        stats.innerHTML =
+          '<div class="admin-stat"><span class="admin-stat-n">' + data.counts.users + '</span><span class="admin-stat-l">注册用户</span></div>' +
+          '<div class="admin-stat"><span class="admin-stat-n">' + data.counts.readings + '</span><span class="admin-stat-l">命运簿记录</span></div>' +
+          '<div class="admin-stat"><span class="admin-stat-n">' + data.counts.wishes + '</span><span class="admin-stat-l">心事</span></div>' +
+          '<div class="admin-stat"><span class="admin-stat-n">' + data.counts.lights + '</span><span class="admin-stat-l">点亮</span></div>';
+      }
+      var usersBox = $("admin-users");
+      if (usersBox) {
+        var rows = data.users.map(function (u) {
+          return '<div class="admin-row">' +
+            '<span class="admin-row-name">' + esc(u.username) +
+            (u.role === "admin" ? ' <span class="admin-badge">管理员</span>' : '') + '</span>' +
+            '<span class="admin-row-time">' + esc(u.createdAt ? fmtTime(u.createdAt) : "") + '</span>' +
+            '</div>';
+        }).join("");
+        usersBox.innerHTML =
+          '<h2 class="admin-section-title">注册用户（' + data.users.length + '）</h2>' +
+          '<div class="admin-list">' + (rows || '<p class="account-note dim">暂无注册用户</p>') + '</div>';
+      }
+    }).catch(function (err) {
+      var stats = $("admin-stats");
+      if (stats) {
+        stats.innerHTML = '<p class="account-error">加载失败：' + esc(err && err.message ? err.message : "未知错误") + '</p>';
+      }
+    });
+
+    YTM.backend.api.listWishes(30).then(function (list) {
+      var box = $("admin-wishes");
+      if (!box) return;
+      var rows = list.map(function (w) {
+        return '<div class="admin-row">' +
+          '<span class="admin-row-text">' + esc(w.text) + ' <span class="u-dim">（✦ ' + w.lights + '）</span></span>' +
+          '<button class="admin-del" type="button" data-wish-id="' + esc(w.id) + '">删除</button>' +
+          '</div>';
+      }).join("");
+      box.innerHTML =
+        '<h2 class="admin-section-title">心事管理</h2>' +
+        '<div class="admin-list">' + (rows || '<p class="account-note dim">心事墙还是空的</p>') + '</div>';
+    }).catch(function () {});
+  }
+
+  function renderAdmin() {
+    var body = $("screen-admin");
+    if (!body) return;
+    var user = YTM.backend.api.user();
+    body.innerHTML =
+      '<div class="screen-body">' +
+      '<button class="btn-back" type="button" data-nav="home">返回</button>' +
+      '<div class="screen-head">' +
+      '<h1 class="screen-title">研途管理台</h1>' +
+      '<p class="screen-subtitle">管理员 · ' + esc(user ? user.username : "Yaya") + ' · 数据经云端校验，仅本人可见</p>' +
+      '</div>' +
+      '<div id="admin-stats" class="admin-stats"><p class="account-note dim">加载统计中…</p></div>' +
+      '<div id="admin-users" class="admin-section"></div>' +
+      '<div id="admin-wishes" class="admin-section"></div>' +
+      '<div class="account-actions">' +
+      '<button id="btn-admin-refresh" class="btn btn-ghost btn-wide" type="button">刷新数据</button>' +
+      '<button id="btn-admin-play" class="btn btn-primary btn-wide" type="button">进入游戏</button>' +
+      '<button id="btn-admin-logout" class="text-link" type="button">退出登录</button>' +
+      '</div>' +
+      '</div>';
+    loadAdminData();
+  }
+
   /* ---------------- 身份选择门（登录 / 注册 / 匿名进入） ---------------- */
 
   function renderGate() {
@@ -644,6 +715,13 @@
     p.then(function () {
       toast(kind === "login" ? "登录成功" : "注册成功，已自动登录");
       renderHistoryActions();
+      /* 管理员 Yaya：直接进入管理台 */
+      if (YTM.backend.api.isAdmin()) {
+        if (ctx !== "gate") closeModal("modal-account");
+        renderAdmin();
+        nav("admin");
+        return;
+      }
       if (ctx === "gate") {
         renderGate();
         nav("theme");
@@ -851,6 +929,35 @@
           renderHistoryActions();
         }).catch(function () {
           toast("退出失败，稍后再试");
+        });
+        return;
+      }
+      if (e.target.closest("#btn-admin-refresh")) {
+        loadAdminData();
+        return;
+      }
+      if (e.target.closest("#btn-admin-play")) {
+        YTM.ui.sound.play("click");
+        nav("theme");
+        return;
+      }
+      if (e.target.closest("#btn-admin-logout")) {
+        YTM.backend.api.logout().then(function () {
+          toast("已退出登录");
+          renderGate();
+          nav("home");
+        }).catch(function () {
+          toast("退出失败，稍后再试");
+        });
+        return;
+      }
+      var adminDel = e.target.closest(".admin-del");
+      if (adminDel) {
+        YTM.backend.api.adminDeleteWish(adminDel.getAttribute("data-wish-id")).then(function () {
+          toast("心事已删除");
+          loadAdminData();
+        }).catch(function (err) {
+          toast("删除失败：" + (err && err.message ? err.message : "未知错误"));
         });
         return;
       }

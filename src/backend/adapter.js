@@ -56,6 +56,11 @@
     register: function (u, p) { return impl().register(u, p); },
     logout: function () { return impl().logout(); },
 
+    /* 管理员（云端校验令牌） */
+    isAdmin: function () { return impl().isAdmin(); },
+    adminStats: function () { return impl().adminStats(); },
+    adminDeleteWish: function (id) { return impl().adminDeleteWish(id); },
+
     saveReading: function (entry) { return impl().saveReading(entry); },
     listReadings: function (limit) { return impl().listReadings(limit); },
 
