@@ -121,6 +121,10 @@ const files = [
 ];
 for (const f of files) {
   await import(pathToFileURL(path.resolve(f)).href);
+  if (f === "src/config.backend.js") {
+    /* 冒烟测试强制单机模式（身份门测试会临时模拟云端） */
+    globalThis.YTM.config.backend.envId = "";
+  }
 }
 
 /* ---------- 断言工具 ---------- */
@@ -264,6 +268,22 @@ check((wishBody.innerHTML.match(/wish-item/g) || []).length >= 3, "心事墙渲�
 fire(elements.get("btn-history"), makeTarget("none"));
 await sleep(20);
 check(elements.get("history-actions").innerHTML.includes("登录 / 云同步"), "命运簿含登录/云同步入口");
+
+/* ---------- 第四阶段：身份选择门（模拟已配置云端） ---------- */
+console.log("  · 身份选择门");
+YTM.config.backend.envId = "cloud1-smoke-fake";
+fire(screens, makeTarget("#btn-start"));
+await sleep(250);
+const gate = elements.get("screen-gate");
+check(gate.classList.contains("active"), "配置云端后：开始占卜 → 身份选择门");
+check(gate.innerHTML.includes("研途之门前"), "身份门标题渲染");
+check(gate.innerHTML.includes("匿名进入研途"), "身份门含「匿名进入」");
+check(gate.innerHTML.includes("注册新账号并进入"), "身份门含注册入口");
+check(gate.innerHTML.includes("gate-name") && gate.innerHTML.includes("gate-pass"), "身份门含登录表单");
+fire(screens, makeTarget("#btn-gate-anon"));
+await sleep(250);
+check(theme.classList.contains("active"), "匿名进入 → 主题页");
+YTM.config.backend.envId = "";
 
 console.log(failures === 0 ? "\n端到端冒烟测试通过 ✔" : "\n端到端冒烟测试存在失败 ✗");
 process.exit(failures === 0 ? 0 : 1);

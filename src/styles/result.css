@@ -515,6 +515,31 @@
   margin: 8px 0 16px;
 }
 
+/* ---------------- 身份选择门 ---------------- */
+
+.gate-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  margin: 4px 0;
+}
+
+.gate-divider span {
+  flex: 1;
+  height: 1px;
+  background: rgba(201, 164, 92, 0.25);
+}
+
+.gate-logged {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .wish-banner {
   font-size: 0.74rem;
   line-height: 1.8;

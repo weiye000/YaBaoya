@@ -165,6 +165,17 @@ try {
   await sleep(300);
   await cdp.shot("02-home-mobile.png");
 
+  /* 身份选择门（模拟已配置云端，走完门后切回单机模式保证后续断言确定性） */
+  await cdp.eval(`YTM.config.backend.envId = "cloud1-e2e-fake"`); await sleep(100);
+  await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(350);
+  check(await cdp.eval(`document.querySelector('#screen-gate').classList.contains('active')`), "移动：开始占卜 → 身份选择门");
+  check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('匿名进入研途')`), "移动：身份门含「匿名进入」");
+  check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('注册新账号并进入')`), "移动：身份门含注册入口");
+  await cdp.shot("02b-gate-mobile.png");
+  await cdp.eval(`document.querySelector('#btn-gate-anon').click()`); await sleep(350);
+  check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "移动：匿名进入 → 主题页");
+  await cdp.eval(`YTM.config.backend.envId = ""`); await sleep(100);
+
   await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(350);
   check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "移动：开始占卜 → 主题页");
   await cdp.shot("03-theme-mobile.png");

@@ -48,6 +48,52 @@
     }
   }
 
+  /* ---------------- 身份选择门（登录 / 注册 / 匿名进入） ---------------- */
+
+  function renderGate() {
+    var body = $("screen-gate");
+    if (!body) return;
+    var user = YTM.backend.api.user();
+    var cloud = YTM.backend.api.isCloud();
+    if (user) {
+      body.innerHTML =
+        '<div class="screen-body">' +
+        '<button class="btn-back" type="button" data-nav="home">返回</button>' +
+        '<div class="screen-head">' +
+        '<h1 class="screen-title">欢迎回来</h1>' +
+        '<p class="screen-subtitle">已登录账户 · 命运簿与图鉴将自动云同步</p>' +
+        '</div>' +
+        '<div class="gate-logged">' +
+        '<p class="account-user">当前账户：<span class="u-gold">' + esc(user.username) + '</span></p>' +
+        '<button id="btn-gate-enter" class="btn btn-primary btn-wide" type="button">以该身份进入研途</button>' +
+        '<button id="btn-gate-logout" class="text-link" type="button">退出登录</button>' +
+        '</div>' +
+        '<p class="account-note dim">换设备登录同一账号，所有占卜记录都会跟着你。</p>' +
+        '</div>';
+      return;
+    }
+    body.innerHTML =
+      '<div class="screen-body">' +
+      '<button class="btn-back" type="button" data-nav="home">返回</button>' +
+      '<div class="screen-head">' +
+      '<h1 class="screen-title">研途之门前</h1>' +
+      '<p class="screen-subtitle">' + (cloud ? "登录后命运簿与你同行；不登录也可直接进入" : "云端未配置 · 当前为本地模式（可选，见 README）") + '</p>' +
+      '</div>' +
+      '<div class="account-form">' +
+      '<input id="gate-name" class="account-input" type="text" maxlength="16" placeholder="用户名（2-16 位）" autocomplete="username">' +
+      '<input id="gate-pass" class="account-input" type="password" placeholder="密码（6-32 位）" autocomplete="current-password">' +
+      '<p id="gate-error" class="account-error" hidden></p>' +
+      '<div class="account-actions">' +
+      '<button id="btn-gate-login" class="btn btn-primary btn-wide" type="button">登录并进入</button>' +
+      '<button id="btn-gate-register" class="btn btn-ghost btn-wide" type="button">注册新账号并进入</button>' +
+      '</div>' +
+      '</div>' +
+      '<div class="gate-divider"><span></span>或<span></span></div>' +
+      '<button id="btn-gate-anon" class="btn btn-ghost btn-wide" type="button">匿名进入研途</button>' +
+      '<p class="account-note dim">' + (cloud ? "匿名玩家使用设备身份与 8 位同步码，可随时在命运簿里升级为账号。" : "不配置云端也完全不影响游戏，数据保存在本机。") + '</p>' +
+      '</div>';
+  }
+
   /* ---------------- 首页 ---------------- */
 
   var HOME_EMBLEM =
@@ -92,7 +138,8 @@
     }).join("");
     $("screen-theme").innerHTML =
       '<div class="screen-body">' +
-      '<button class="btn-back" type="button" data-nav="home">返回</button>' +
+      '<button class="btn-back" type="button" data-nav="' +
+      (YTM.backend.api.isCloud() ? "gate" : "home") + '">返回</button>' +
       '<div class="screen-head">' +
       '<h1 class="screen-title">选择占卜主题</h1>' +
       '<p class="screen-subtitle">这一次，你想问命运什么？</p>' +
@@ -576,10 +623,12 @@
     });
   }
 
-  function submitAccount(kind) {
-    var nameEl = $("account-name");
-    var passEl = $("account-pass");
-    var errEl = $("account-error");
+  function submitAccount(kind, ctx) {
+    ctx = ctx || "modal";
+    var prefix = ctx === "gate" ? "gate-" : "account-";
+    var nameEl = $(prefix + "name");
+    var passEl = $(prefix + "pass");
+    var errEl = $(prefix + "error");
     var name = nameEl ? nameEl.value.trim() : "";
     var pass = passEl ? passEl.value : "";
     var showErr = function (msg) {
@@ -587,18 +636,26 @@
     };
     if (!/^[\w\u4e00-\u9fa5-]{2,16}$/.test(name)) { showErr("用户名需 2-16 位（字母/数字/中文/下划线）"); return; }
     if (pass.length < 6 || pass.length > 32) { showErr("密码需 6-32 位"); return; }
-    var btn = kind === "login" ? $("btn-login") : $("btn-register");
+    var btn = ctx === "gate"
+      ? (kind === "login" ? $("btn-gate-login") : $("btn-gate-register"))
+      : (kind === "login" ? $("btn-login") : $("btn-register"));
     if (btn) { btn.disabled = true; btn.textContent = kind === "login" ? "登录中…" : "注册中…"; }
     var p = kind === "login" ? YTM.backend.api.login(name, pass) : YTM.backend.api.register(name, pass);
     p.then(function () {
       toast(kind === "login" ? "登录成功" : "注册成功，已自动登录");
       renderHistoryActions();
-      openAccount();
-      syncCloud();
+      if (ctx === "gate") {
+        renderGate();
+        nav("theme");
+        syncCloud();
+      } else {
+        openAccount();
+        syncCloud();
+      }
     }).catch(function (err) {
       var msg = err && err.message ? err.message : "操作失败";
       if (/Function not found|FUNCTION_NOT_FOUND|ResourceNotFound|云函数调用失败|未就绪/.test(msg)) {
-        msg = "账号功能暂不可用：云函数未部署（当前套餐可能不支持云函数）。可继续使用访客同步码。";
+        msg = "账号功能暂不可用：云函数未部署。可先匿名进入，或联系开发者。";
       }
       showErr(msg);
       if (btn) { btn.disabled = false; btn.textContent = kind === "login" ? "登录" : "注册新账号"; }
@@ -758,7 +815,43 @@
       var startBtn = e.target.closest("#btn-start");
       if (startBtn) {
         YTM.ui.sound.play("click");
+        /* 已配置云端：先过「研途之门前」身份选择；单机模式直接进主题 */
+        if (YTM.backend.api.isCloud()) {
+          renderGate();
+          nav("gate");
+        } else {
+          nav("theme");
+        }
+        return;
+      }
+      if (e.target.closest("#btn-gate-anon")) {
+        YTM.ui.sound.play("click");
         nav("theme");
+        return;
+      }
+      if (e.target.closest("#btn-gate-enter")) {
+        YTM.ui.sound.play("click");
+        nav("theme");
+        return;
+      }
+      if (e.target.closest("#btn-gate-login")) {
+        YTM.ui.sound.play("click");
+        submitAccount("login", "gate");
+        return;
+      }
+      if (e.target.closest("#btn-gate-register")) {
+        YTM.ui.sound.play("click");
+        submitAccount("register", "gate");
+        return;
+      }
+      if (e.target.closest("#btn-gate-logout")) {
+        YTM.backend.api.logout().then(function () {
+          toast("已退出登录");
+          renderGate();
+          renderHistoryActions();
+        }).catch(function () {
+          toast("退出失败，稍后再试");
+        });
         return;
       }
       var themeCard = e.target.closest("[data-theme-id]");
