@@ -5,12 +5,15 @@
  * 覆盖：桌面 + 移动视口下的完整旅程、JS 异常与 console.error 捕获、截图
  */
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { extname, join, normalize, resolve } from "node:path";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 const PORT = 9333;
+const HTTP_PORT = 9643;
 const CANDIDATES = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
@@ -21,10 +24,42 @@ const CHROME = CANDIDATES.find((p) => existsSync(p));
 if (!CHROME) { console.error("未找到 Chrome/Edge，跳过 E2E"); process.exit(2); }
 
 const PROFILE = path.join(os.tmpdir(), "ytm-e2e-" + Date.now());
-const URL = pathToFileURL(path.resolve("index.html")).href;
 const SHOTS = path.join(os.tmpdir(), "ytm-e2e-shots");
-import { mkdirSync } from "node:fs";
 mkdirSync(SHOTS, { recursive: true });
+
+/* 内置静态服务器（HTTP 同源，模拟生产环境；file:// 会让 Canvas 被污染） */
+const ROOT = resolve(".");
+const MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".wav": "audio/wav",
+  ".svg": "image/svg+xml",
+  ".json": "application/json"
+};
+const httpServer = createServer(async (req, res) => {
+  try {
+    let p = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+    if (p === "/") p = "/index.html";
+    const file = join(ROOT, normalize(p).replace(/^[/\\]+/, ""));
+    if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
+    const data = await readFile(file);
+    res.writeHead(200, { "Content-Type": MIME[extname(file).toLowerCase()] || "application/octet-stream" });
+    res.end(data);
+  } catch (e) {
+    console.log("http 404:", req.url);
+    res.writeHead(404);
+    res.end();
+  }
+});
+await new Promise((r) => httpServer.listen(HTTP_PORT, "127.0.0.1", r));
+/* 服务器自检 */
+const selfCheck = await fetch(`http://127.0.0.1:${HTTP_PORT}/index.html`).then((r) => r.status).catch((e) => "ERR:" + e.message);
+console.log("http self-check:", selfCheck);
+
+const PAGE_URL = `http://127.0.0.1:${HTTP_PORT}/index.html`;
 
 const chrome = spawn(CHROME, [
   "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
@@ -76,7 +111,10 @@ class CDP {
   }
   async eval(expr) {
     const r = await this.send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
-    if (r.exceptionDetails) throw new Error("evaluate 异常: " + JSON.stringify(r.exceptionDetails).slice(0, 300));
+    if (r.exceptionDetails) {
+      const d = r.exceptionDetails.exception && r.exceptionDetails.exception.description;
+      throw new Error("evaluate 异常: " + (d || JSON.stringify(r.exceptionDetails)));
+    }
     return r.result.value;
   }
   async shot(name) {
@@ -89,7 +127,8 @@ class CDP {
 
 try {
   await waitForDevtools();
-  const target = await (await fetch(`http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(URL)}`, { method: "PUT" })).json();
+  const target = await (await fetch(`http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(PAGE_URL)}`, { method: "PUT" })).json();
+  console.log("target:", JSON.stringify({ id: target.id, url: target.url, type: target.type }));
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((res, rej) => { ws.addEventListener("open", res); ws.addEventListener("error", rej); });
   const cdp = new CDP(ws);
@@ -103,6 +142,15 @@ try {
     if (ready) break;
     await sleep(250);
   }
+
+  /* 页面加载诊断 */
+  const pageInfo = await cdp.eval(`(() => ({
+    url: location.href,
+    title: document.title,
+    hasHome: !!document.querySelector('#screen-home'),
+    screensHtml: (document.getElementById('screens') || { innerHTML: "(no #screens)" }).innerHTML.slice(0, 150)
+  }))()`);
+  console.log("pageInfo: " + JSON.stringify(pageInfo));
 
   /* ---------- 桌面视口 ---------- */
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
@@ -175,9 +223,30 @@ try {
   check(await cdp.eval(`document.querySelectorAll('.tip-item').length >= 3`), "移动：命运提示 ≥3 条");
   await cdp.shot("06-result-mobile.png");
 
-  await cdp.eval(`document.querySelector('#btn-share-open').click()`); await sleep(500);
+  await cdp.eval(`document.querySelector('#btn-share-open').click()`); await sleep(1200);
   check(await cdp.eval(`document.querySelector('#share-canvas').width === 1080`), "移动：分享卡 1080×1440");
   check(await cdp.eval(`document.querySelector('#modal-share').hidden === false`), "移动：分享弹窗打开");
+  const sharePixels = await cdp.eval(`(() => {
+    const cv = document.querySelector('#share-canvas');
+    if (!cv) return { diag: 'canvas-missing' };
+    const ctx = cv.getContext('2d');
+    if (!ctx) return { diag: 'ctx-null' };
+    const px = (x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data).join(',');
+    let corner = null, cardMid = null, cardSide = null, tainted = false;
+    try {
+      corner = px(110, 110);
+      cardMid = px(540, 975);
+      cardSide = px(879, 810);
+    } catch (e) {
+      tainted = true;
+    }
+    return { diag: 'ok', tainted, corner, cardMid, cardSide };
+  })()`);
+  check(sharePixels.diag === "ok" && !sharePixels.tainted, "分享卡：Canvas 可读取像素（diag=" + sharePixels.diag + "）");
+  if (sharePixels.diag === "ok" && !sharePixels.tainted) {
+    check(sharePixels.cardMid !== sharePixels.corner, "分享卡：中央卡牌已真实绘制（非空背景）");
+    check(sharePixels.cardSide !== sharePixels.corner, "分享卡：扇形侧卡已真实绘制（非空背景）");
+  }
   await cdp.shot("07-share-mobile.png");
 
   await cdp.eval(`document.querySelector('#btn-again').click()`); await sleep(350);
@@ -252,9 +321,11 @@ try {
   console.log(failures === 0 ? "\n真实浏览器 E2E 通过 ✔" : "\n真实浏览器 E2E 存在失败 ✗");
   console.log("截图目录: " + SHOTS);
   try { await cdp.send("Browser.close"); } catch (e) { /* 忽略 */ }
+  httpServer.close();
   process.exit(failures === 0 ? 0 : 1);
 } catch (err) {
   console.error("E2E 执行失败: " + err.message);
   chrome.kill();
+  httpServer.close();
   process.exit(1);
 }

@@ -392,6 +392,19 @@
       tips: buildTips(reading),
       advice: cLast.card.advice[orient(cLast)],
       perCard: buildPerCard(reading),
+      /* 分享卡星图所需：本次抽到的全部卡牌（含位置标签） */
+      drawn: reading.cards.map(function (e) {
+        return {
+          id: e.card.id,
+          name: e.card.name,
+          en: e.card.en,
+          no: e.card.no,
+          palette: e.card.palette,
+          keyword: e.card.keyword,
+          reversed: e.reversed,
+          label: e.position.label
+        };
+      }),
       finalCard: {
         id: cLast.card.id,
         name: cLast.card.name,

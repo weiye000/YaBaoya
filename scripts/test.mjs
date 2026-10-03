@@ -130,6 +130,11 @@ for (const s of spreads) {
       assert(r.tips.length >= 3 && r.tips.length <= 4, `${s.id}/${q.id}#${seed} 提示条数 ${r.tips.length} 异常`);
       assert(r.advice && r.advice.length > 3, `${s.id}/${q.id}#${seed} 行动建议为空`);
       assert(r.perCard.length === s.count, `${s.id}/${q.id}#${seed} 逐牌解读数量错误`);
+      assert(r.drawn.length === s.count, `${s.id}/${q.id}#${seed} 分享卡 drawn 数量错误`);
+      for (let di = 0; di < r.drawn.length; di++) {
+        assert(r.drawn[di].id === reading.cards[di].card.id, `${s.id}/${q.id}#${seed} drawn 卡牌顺序/身份错误`);
+        assert(r.drawn[di].label === reading.cards[di].position.label, `${s.id}/${q.id}#${seed} drawn 缺少位置标签`);
+      }
       for (const pc of r.perCard) {
         assert(pc.core && pc.contextText && pc.lines.length >= 2 && pc.adviceText, `${s.id}/${q.id}#${seed} 逐牌字段缺失`);
         assert(pc.lead && pc.lead.length > 5, `${s.id}/${q.id}#${seed} 「${pc.name}」缺少位置开场白`);
