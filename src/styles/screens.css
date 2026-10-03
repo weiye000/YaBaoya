@@ -1,0 +1,234 @@
+/* ============================================================
+   研途秘典 · 流程页：主题选择 / 问题输入 / 牌阵选择 / 抽牌
+   ============================================================ */
+
+/* ---------------- 主题选择 ---------------- */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (min-width: 640px) {
+  .theme-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.theme-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 14px 18px;
+  border: 1px solid rgba(139, 123, 216, 0.32);
+  border-radius: var(--radius-m);
+  background: linear-gradient(180deg, rgba(26, 26, 56, 0.55), rgba(11, 11, 28, 0.55));
+  text-align: center;
+  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast),
+    box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.theme-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(201, 164, 92, 0.55);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35), 0 0 18px rgba(201, 164, 92, 0.12);
+}
+
+.theme-card:active { transform: scale(0.97); }
+
+.theme-glyph {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  color: var(--gold-2);
+  text-shadow: 0 0 16px rgba(201, 164, 92, 0.5);
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+.theme-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+
+.theme-sample {
+  font-size: 0.7rem;
+  line-height: 1.7;
+  color: var(--ink-3);
+  min-height: 2.4em;
+}
+
+/* ---------------- 问题输入 ---------------- */
+
+.q-theme-banner {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  border: 1px solid rgba(201, 164, 92, 0.35);
+  border-radius: 999px;
+  color: var(--gold-2);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+}
+
+.q-section-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--ink-2);
+  margin-bottom: 12px;
+}
+
+.q-input {
+  width: 100%;
+  min-height: 104px;
+  padding: 14px 16px;
+  border: 1px solid rgba(139, 123, 216, 0.35);
+  border-radius: 14px;
+  background: rgba(11, 11, 28, 0.75);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  resize: none;
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.q-input::placeholder { color: var(--ink-3); }
+
+.q-input:focus {
+  border-color: rgba(201, 164, 92, 0.65);
+  box-shadow: 0 0 0 3px rgba(201, 164, 92, 0.12);
+}
+
+.q-counter {
+  text-align: right;
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+/* ---------------- 牌阵选择 ---------------- */
+
+.spread-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.spread-option {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 18px;
+  border: 1px solid rgba(139, 123, 216, 0.32);
+  border-radius: var(--radius-m);
+  background: linear-gradient(180deg, rgba(26, 26, 56, 0.55), rgba(11, 11, 28, 0.55));
+  text-align: left;
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+}
+
+.spread-option:hover { transform: translateY(-2px); border-color: rgba(201, 164, 92, 0.5); }
+
+.spread-option.selected {
+  border-color: var(--gold);
+  background: rgba(201, 164, 92, 0.1);
+  box-shadow: 0 0 20px rgba(201, 164, 92, 0.16);
+}
+
+.spread-preview {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px dashed rgba(201, 164, 92, 0.35);
+  border-radius: 10px;
+}
+
+.preview-dot {
+  width: 13px;
+  height: 20px;
+  border: 1px solid rgba(201, 164, 92, 0.75);
+  border-radius: 3px;
+  background: rgba(201, 164, 92, 0.14);
+}
+
+.preview-dot.small { width: 10px; }
+
+.spread-option.selected .preview-dot { background: rgba(201, 164, 92, 0.4); }
+
+.spread-option-body { min-width: 0; }
+
+.spread-option-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+.spread-option-alias {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.badge-recommend {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 164, 92, 0.6);
+  color: var(--gold-2);
+  white-space: nowrap;
+}
+
+.spread-option-desc {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  line-height: 1.75;
+  color: var(--ink-3);
+}
+
+/* ---------------- 抽牌仪式 ---------------- */
+
+.draw-head {
+  text-align: center;
+}
+
+.draw-head .screen-title { margin-bottom: 6px; }
+
+.draw-ritual-line {
+  font-size: 0.82rem;
+  letter-spacing: 0.22em;
+  color: var(--ink-2);
+}
+
+.draw-hint {
+  text-align: center;
+  font-size: 0.84rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+  animation: glow-pulse 2.6s ease-in-out infinite;
+}
+
+.draw-hint.done { animation: none; color: var(--gold); }
+
+.draw-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------------- 通用 ---------------- */
+
+.screen-head { text-align: center; }
+
+.screen-head .screen-title { margin-bottom: 6px; }

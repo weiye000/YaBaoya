@@ -1,0 +1,205 @@
+/* ============================================================
+   研途秘典 · 卡牌与牌阵
+   3D 翻牌、悬浮浮动、扇形牌阵布局、逐牌解读面板
+   ============================================================ */
+
+:root {
+  --card-w: clamp(136px, 36vw, 190px);
+  --card-h: calc(var(--card-w) * 5 / 3);
+}
+
+/* ---------------- 3D 翻牌 ---------------- */
+
+.card-scene {
+  perspective: 1100px;
+}
+
+.spread-card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  transform-style: preserve-3d;
+  transition: transform 0.75s var(--ease-out);
+  cursor: pointer;
+}
+
+.spread-card .card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: calc(var(--card-w) * 0.067);
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.spread-card .card-face svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.spread-card .card-front {
+  transform: rotateY(180deg);
+}
+
+.spread-card.flipped {
+  transform: rotateY(180deg);
+  cursor: default;
+}
+
+.spread-card.flipped .card-face {
+  box-shadow: 0 8px 34px rgba(201, 164, 92, 0.28), 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* 卡背轻微浮动（仅支持悬停的设备；已翻开的不浮动） */
+@media (hover: hover) {
+  .spread-card:hover:not(.flipped) { transform: translateY(-8px) rotate(-1deg); }
+  .spread-card:active:not(.flipped) { transform: translateY(0) scale(0.97); }
+}
+
+/* ---------------- 牌阵布局 ---------------- */
+
+.spread {
+  display: flex;
+  gap: clamp(10px, 3vw, 24px);
+  justify-content: center;
+  align-items: flex-end;
+  padding: 10px 4px 6px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 164, 92, 0.3) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-slot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: transform var(--t-mid) var(--ease-out);
+}
+
+.card-pos-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.card-pos-desc {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* 宽屏：五牌阵呈扇形（上下补足 padding，防止 transform 被滚动容器裁切） */
+@media (min-width: 820px) {
+  .spread--five { padding-top: 34px; padding-bottom: 44px; }
+  .spread--five .card-slot:nth-child(1) { transform: translateY(30px) rotate(-7deg); }
+  .spread--five .card-slot:nth-child(2) { transform: translateY(8px) rotate(-3deg); }
+  .spread--five .card-slot:nth-child(4) { transform: translateY(8px) rotate(3deg); }
+  .spread--five .card-slot:nth-child(5) { transform: translateY(30px) rotate(7deg); }
+}
+
+/* ---------------- 逐牌解读面板 ---------------- */
+
+.card-detail {
+  border: 1px solid rgba(201, 164, 92, 0.28);
+  border-radius: var(--radius-m);
+  background: linear-gradient(180deg, rgba(26, 26, 56, 0.75), rgba(11, 11, 28, 0.75));
+  padding: 20px 20px 22px;
+  min-height: 178px;
+  animation: detail-in var(--t-mid) var(--ease-out) both;
+}
+
+@keyframes detail-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-detail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.card-detail-position {
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  color: var(--gold);
+  text-indent: 0.24em;
+}
+
+.card-detail-name {
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+.card-detail-orient {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(201, 164, 92, 0.45);
+  color: var(--gold-2);
+}
+
+.card-detail-orient.reversed {
+  border-color: rgba(166, 58, 50, 0.7);
+  color: #d98d84;
+}
+
+.card-detail-core {
+  font-family: var(--font-serif);
+  font-size: 0.98rem;
+  line-height: 1.9;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.card-detail-context {
+  font-size: 0.88rem;
+  line-height: 1.85;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+.card-detail-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card-detail-lines li {
+  font-size: 0.85rem;
+  color: var(--ink-3);
+  line-height: 1.8;
+  padding-left: 18px;
+  position: relative;
+}
+
+.card-detail-lines li::before {
+  content: "✦";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  font-size: 0.62rem;
+  top: 2px;
+}
+
+.card-detail-advice {
+  margin-top: 10px;
+  font-size: 0.86rem;
+  color: var(--gold-2);
+  line-height: 1.85;
+}
+
+.card-detail-advice::before { content: "· 行动建议："; color: var(--ink-3); }

@@ -1,0 +1,296 @@
+/* ============================================================
+   研途秘典 · 结果页与分享弹窗
+   ============================================================ */
+
+/* ---------------- 逐段浮现 ---------------- */
+
+.reveal-item {
+  opacity: 0;
+  animation: rise-in 0.7s var(--ease-out) forwards;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------- 关键词 ---------------- */
+
+.result-keyword { text-align: center; }
+
+.keyword-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--gold);
+}
+
+.keyword-word {
+  margin-top: 10px;
+  font-family: var(--font-serif);
+  font-size: clamp(2.6rem, 13vw, 4.4rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--gold-2);
+  text-shadow: 0 0 34px rgba(232, 207, 143, 0.4), 0 0 90px rgba(201, 164, 92, 0.22);
+}
+
+.keyword-word .kw-bracket { font-size: 0.55em; color: var(--gold-3); }
+
+.keyword-line {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+
+/* ---------------- 区块 ---------------- */
+
+.result-section {
+  border-top: 1px solid rgba(201, 164, 92, 0.16);
+  padding-top: 24px;
+}
+
+.result-section h2 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: var(--gold);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.result-section h2::before { content: "✦ "; font-size: 0.7rem; }
+.result-section h2::after { content: " ✦"; font-size: 0.7rem; }
+
+/* ---------------- 牌阵摘要 ---------------- */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.summary-item {
+  padding: 14px 10px;
+  border: 1px solid rgba(139, 123, 216, 0.3);
+  border-radius: var(--radius-s);
+  background: rgba(18, 18, 42, 0.55);
+  text-align: center;
+}
+
+.summary-item .sum-pos {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+}
+
+.summary-item .sum-name {
+  margin-top: 8px;
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.summary-item .sum-kw {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--gold-2);
+}
+
+.summary-item .sum-rev {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border: 1px solid rgba(166, 58, 50, 0.65);
+  border-radius: 5px;
+  color: #d98d84;
+}
+
+/* ---------------- 保研画像 ---------------- */
+
+.portrait p {
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+  line-height: 2;
+  color: var(--ink-2);
+}
+
+.portrait p:last-child { margin-bottom: 0; }
+
+.portrait p strong { color: var(--gold-2); font-weight: 600; }
+
+/* ---------------- 命运提示 ---------------- */
+
+.tip-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 0.92rem;
+  line-height: 1.85;
+  color: var(--ink-2);
+}
+
+.tip-item::before {
+  content: "✦";
+  color: var(--gold);
+  font-size: 0.68rem;
+  flex: 0 0 auto;
+}
+
+/* ---------------- 行动建议 ---------------- */
+
+.advice-box {
+  border: 1px solid rgba(201, 164, 92, 0.4);
+  border-radius: var(--radius-m);
+  padding: 18px 20px;
+  background: rgba(201, 164, 92, 0.07);
+}
+
+.advice-box .advice-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.advice-box .advice-text {
+  font-family: var(--font-serif);
+  font-size: 1.04rem;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+/* ---------------- 操作区 ---------------- */
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.text-link {
+  align-self: center;
+  padding: 8px 16px;
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  transition: color var(--t-fast);
+}
+
+.text-link:hover { color: var(--gold); }
+
+.result-disclaimer {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: rgba(182, 174, 159, 0.4);
+}
+
+/* ---------------- 分享弹窗 ---------------- */
+
+.modal-panel-share { width: min(420px, 100%); }
+
+.share-canvas-wrap {
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  border: 1px solid rgba(201, 164, 92, 0.35);
+  background: #0a0a1a;
+}
+
+#share-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-hint {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+
+.share-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ---------------- 命运簿 ---------------- */
+
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+
+.history-empty {
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  padding: 26px 0;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(139, 123, 216, 0.28);
+  border-radius: var(--radius-s);
+  background: rgba(18, 18, 42, 0.5);
+  text-align: left;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+
+.history-item:hover { border-color: rgba(201, 164, 92, 0.5); }
+
+.history-item-main { min-width: 0; }
+
+.history-item-title {
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-meta {
+  margin-top: 3px;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-kw {
+  flex: 0 0 auto;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--gold-2);
+}
+
+.history-clear {
+  display: block;
+  margin: 16px auto 0;
+  padding: 6px 14px;
+  color: var(--ink-3);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  transition: color var(--t-fast);
+}
+
+.history-clear:hover { color: #d98d84; }

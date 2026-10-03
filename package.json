@@ -1,0 +1,10 @@
+{
+  "name": "yan-tu-mi-dian",
+  "version": "1.0.0",
+  "private": true,
+  "description": "研途秘典 · 保研占卜网页游戏（纯前端、零依赖、零构建）",
+  "scripts": {
+    "test": "node scripts/test.mjs",
+    "serve": "npx --yes serve ."
+  }
+}
