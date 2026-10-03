@@ -209,8 +209,8 @@ yan-tu-mi-dian/
 
 1. 打开 [cloud.tencent.com](https://cloud.tencent.com) → 微信扫码登录 → 完成个人实名认证；
 2. 开通「云开发 CloudBase」→ 创建环境，计费选**按量付费**（有每月免费额度，不充值也能用）→ 记下**环境 ID**（形如 `yantu-1g2h3k4l`）；
-3. 控制台 → 你的环境 → **数据库** → 创建三个集合：`wishes`、`lights`、`readings`；
-4. 每个集合点「权限设置」→ 选择**「所有用户可读，仅创建者可写」**；
+3. 控制台 → 你的环境 → **数据库** → 顶部 Tab 选择**「文档型数据库」**（⚠️ 不要用 MySQL/PostgreSQL——本项目的后端代码基于文档型集合）→「集合管理」→ 创建三个集合：`wishes`、`lights`、`readings`（手动创建，空表即可）；
+4. 每个集合点「权限设置」→ 在**基础权限**里单选**「所有用户可读，仅创建者可写」**→ 保存（一个预设按钮即可，无需填写任何名称/指令/应用对象；若选择「自定义安全规则」，粘贴 `{ "read": true, "write": "doc._openid == auth.openid" }`）；
 5. 控制台 → **登录授权** → 开启**匿名登录**；
 6. 控制台 → **Web 安全域名** → 添加你的前端域名（如 `https://weiye000.github.io`；本地调试加 `http://localhost`）；
 7. 把环境 ID 填入 `src/config.backend.js` 的 `envId`，重新部署即可。
