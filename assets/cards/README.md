@@ -1,12 +1,27 @@
-# assets/cards · 卡面资源
+# assets/cards · 卡面插画
 
-当前版本（V1）卡面**不使用图片文件**，22 张牌全部由 `src/ui/cards-ui.js` 程序化生成 SVG：
+V1.1 起，22 张卡牌使用**真实塔罗插画**（本目录内的 JPG 文件）：
 
-- 牌面：卡牌专属双色渐变 + 暗金双框 + 星图徽记（以卡牌编号为种子的程序化星座）+ 牌名 + 关键词
-- 牌背：靛蓝晶格 + 八芒星法阵
+| 来源 | 授权 | 说明 |
+|---|---|---|
+| Rider–Waite–Smith 塔罗牌（1909，英国首版） | 美国公有领域 | 21 张大阿卡纳，来自 [Wikimedia Commons](https://commons.wikimedia.org/)（文件名形如 `RWS_Tarot_00_Fool.jpg`） |
+| Flammarion 木刻版画（1888，出自 Camille Flammarion《L'atmosphère》） | 公有领域 | 原创牌「求索者」的画面（原图为横版，已按卡面比例裁剪），来自 [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Flammarion.jpg) |
 
-如需替换为真实插画：
+文件名与卡牌 `id` 一一对应（见 `src/data/cards.js`），如 `fool.jpg`、`seeker.jpg`。
 
-1. 将图片命名为 `card_<id>.svg`（id 见 `src/data/cards.js`）放入本目录；
-2. 修改 `src/ui/cards-ui.js` 中 `cardFaceSVG()`，改为输出 `<img src="assets/cards/card_<id>.svg">`；
-3. 分享图 `src/ui/share.js` 中 `drawMiniCard()` 可同步替换为 `drawImage`。
+> 授权说明：两套图源均处于公有领域（美国）。若在其他司法辖区或用于商业发布，请自行确认当地版权规则。
+
+## 加载失败时的兜底
+
+`src/ui/cards-ui.js` 会在插画**之下**绘制程序化星图徽记：插画正常加载时完全遮盖星图；
+若图片缺失/加载失败，卡面自动回落到此前的星图样式，游戏功能不受影响。
+
+## 更换插画
+
+1. 直接用同名文件替换本目录中的 JPG（建议竖版、比例接近 208:368，宽 ≥ 480px 更清晰）；
+2. 无需改任何代码——牌面、翻牌动画、分享卡都会自动使用新图。
+
+## 重新生成/后处理
+
+下载脚本与裁剪逻辑见 `scripts/process_cards.py`（依赖 Pillow）：
+`python scripts/process_cards.py`

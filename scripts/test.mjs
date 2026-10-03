@@ -129,7 +129,7 @@ for (const s of spreads) {
       for (const pc of r.perCard) {
         assert(pc.core && pc.contextText && pc.lines.length >= 2 && pc.adviceText, `${s.id}/${q.id}#${seed} 逐牌字段缺失`);
       }
-      assert(r.finalCard.name && r.finalCard.palette, `${s.id}/${q.id}#${seed} 最终牌信息缺失`);
+      assert(r.finalCard.id && r.finalCard.name && r.finalCard.palette, `${s.id}/${q.id}#${seed} 最终牌信息缺失`);
       assert(r.disclaimer.includes("仅供娱乐"), `${s.id}/${q.id}#${seed} 缺少免责声明`);
       /* 禁止出现概率/承诺类表述 */
       const full = JSON.stringify(r);

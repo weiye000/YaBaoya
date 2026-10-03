@@ -247,6 +247,7 @@
       advice: cLast.card.advice[orient(cLast)],
       perCard: buildPerCard(reading),
       finalCard: {
+        id: cLast.card.id,
         name: cLast.card.name,
         en: cLast.card.en,
         no: cLast.card.no,

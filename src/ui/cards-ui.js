@@ -8,9 +8,6 @@
   var YTM = global.YTM = global.YTM || {};
   YTM.ui = YTM.ui || {};
 
-  var ROMANS = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-    "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI"];
-
   var GOLD = "#c9a45c";
   var GOLD_2 = "#e8cf8f";
   var INK = "#e9e4d8";
@@ -68,27 +65,36 @@
     return parts.join("");
   }
 
-  /* 牌面 SVG（240 × 400） */
+  /* 牌面 SVG（240 × 400）：真实插画 + 程序化星图兜底 */
   function cardFaceSVG(card, reversed) {
     var p = card.palette || [GOLD, "#2a2a5e"];
-    var roman = ROMANS[card.no] || String(card.no);
     var kw = card.keyword[reversed ? "r" : "u"];
     var gid = "ytm-grad-" + card.id;
+    var pid = "ytm-plate-" + card.id;
     var badge = reversed
       ? '<g><rect x="24" y="30" width="46" height="21" rx="5" fill="#a63a32"/>' +
         '<text x="47" y="45" text-anchor="middle" font-size="12" fill="#f2e6d0" letter-spacing="2" font-family="serif">逆位</text></g>'
       : "";
     return '<svg viewBox="0 0 240 400" xmlns="http://www.w3.org/2000/svg">' +
-      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1">' +
+      '<defs>' +
+      '<linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1">' +
       '<stop offset="0" stop-color="' + p[0] + '" stop-opacity="0.92"/>' +
-      '<stop offset="1" stop-color="' + p[1] + '" stop-opacity="1"/></linearGradient></defs>' +
+      '<stop offset="1" stop-color="' + p[1] + '" stop-opacity="1"/></linearGradient>' +
+      '<linearGradient id="' + pid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#0b0b1c" stop-opacity="0"/>' +
+      '<stop offset="0.45" stop-color="#0b0b1c" stop-opacity="0.72"/>' +
+      '<stop offset="1" stop-color="#0b0b1c" stop-opacity="0.96"/></linearGradient>' +
+      '</defs>' +
       '<rect x="8" y="8" width="224" height="384" rx="16" fill="url(#' + gid + ')"/>' +
+      /* 星图兜底：插画加载失败时可见 */
+      '<g transform="translate(72 106)">' + sigilSVG(card.no * 7919 + 17, GOLD_2) + '</g>' +
+      /* 真实插画（按内框比例裁剪填充） */
+      '<image href="assets/cards/' + card.id + '.jpg" x="16" y="16" width="208" height="368" preserveAspectRatio="xMidYMid slice"/>' +
+      /* 底部名牌（保证牌名与关键词可读） */
+      '<rect x="16" y="268" width="208" height="116" fill="url(#' + pid + ')"/>' +
       '<rect x="8" y="8" width="224" height="384" rx="16" fill="none" stroke="' + GOLD + '" stroke-opacity="0.9" stroke-width="1.2"/>' +
       '<rect x="16" y="16" width="208" height="368" rx="11" fill="none" stroke="' + GOLD + '" stroke-opacity="0.35" stroke-width="0.8" stroke-dasharray="3 4"/>' +
-      '<text x="120" y="54" text-anchor="middle" font-size="13" fill="' + GOLD_2 + '" letter-spacing="4" font-family="Georgia,serif">' + roman + '</text>' +
-      '<line x1="72" y1="64" x2="168" y2="64" stroke="' + GOLD + '" stroke-opacity="0.4"/>' +
       badge +
-      '<g transform="translate(72 106)">' + sigilSVG(card.no * 7919 + 17, GOLD_2) + '</g>' +
       '<text x="120" y="330" text-anchor="middle" font-size="27" fill="' + INK + '" letter-spacing="5" font-family="\'Noto Serif SC\',\'Songti SC\',serif">' + card.name + '</text>' +
       '<text x="120" y="364" text-anchor="middle" font-size="13" fill="' + GOLD_2 + '" letter-spacing="8" font-family="\'Noto Serif SC\',\'Songti SC\',serif">' + kw + '</text>' +
       '</svg>';

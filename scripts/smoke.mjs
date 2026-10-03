@@ -86,6 +86,12 @@ globalThis.cancelAnimationFrame = () => {};
 globalThis.addEventListener = () => {};
 globalThis.removeEventListener = () => {};
 globalThis.matchMedia = () => ({ matches: false });
+/* Image 桩：模拟插画加载成功，驱动分享卡走真实插画绘制路径 */
+globalThis.Image = class {
+  constructor() { this.naturalWidth = 640; this.naturalHeight = 1100; }
+  set src(v) { this._src = v; setTimeout(() => { if (this.onload) this.onload(); }, 0); }
+  get src() { return this._src; }
+};
 globalThis.localStorage = {
   getItem() { return null; },
   setItem() {},
@@ -154,9 +160,10 @@ const YTM = globalThis.YTM;
 let svgOk = true;
 for (const c of YTM.data.cards) {
   if (!YTM.ui.cards.cardFaceSVG(c, false).startsWith("<svg") ||
-      !YTM.ui.cards.cardFaceSVG(c, true).includes("逆位")) svgOk = false;
+      !YTM.ui.cards.cardFaceSVG(c, true).includes("逆位") ||
+      !YTM.ui.cards.cardFaceSVG(c, false).includes('href="assets/cards/' + c.id + '.jpg"')) svgOk = false;
 }
-check(svgOk, "22 张卡牌正/逆位 SVG 均可生成");
+check(svgOk, "22 张卡牌正/逆位 SVG 均可生成且嵌入插画引用");
 
 /* ---------- 第二阶段：完整用户旅程 ---------- */
 console.log("  · 模拟完整旅程");

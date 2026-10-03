@@ -18,8 +18,9 @@
 - **结果生成引擎**：纯本地规则系统（JSON 数据 + JS 组装），无后端、无 API、无数据库
 - **研途命运卡**：Canvas 生成 1080×1440 分享图（暗金双框 + 星图 + 红色印章），支持下载 / 长按保存 / 复制
 - **命运簿**：本地记录最近 30 次占卜，刷新、关闭页面后仍可回看
-- **仪式感视觉**：Canvas 星空粒子背景、法阵首页、程序化 SVG 星图卡面（22 张各不同）、逐段浮现的结果页
-- **音效**：WebAudio 合成（点击 / 抽牌 / 翻牌 / 揭示 / 结果），默认静音，右上角开关
+- **仪式感视觉**：Canvas 星空粒子背景、法阵首页、逐段浮现的结果页
+- **真实卡面插画**：21 张 Rider–Waite–Smith 公有领域塔罗插画 + Flammarion 版画（原创牌「求索者」），插画加载失败时自动回落程序化星图
+- **真实音效**：5 个 WAV 音频文件（点击/抽牌/翻牌/揭示/结果），WebAudio 合成器兜底，默认静音，右上角开关
 - **移动端优先**：手机 / 平板 / PC 自适应，安全区适配，触控翻牌
 - **无障碍**：`prefers-reduced-motion` 支持、键盘焦点样式、语义化标签
 
@@ -67,7 +68,11 @@ yan-tu-mi-dian/
 ├── package.json            # 仅含 test / serve 脚本，无任何依赖
 ├── scripts/
 │   ├── test.mjs            # Node 逻辑层自动化测试
-│   └── http_check.py       # HTTP 部署冒烟检查（可选）
+│   ├── smoke.mjs           # 启动冒烟测试（DOM 桩）
+│   ├── e2e.mjs             # 真实浏览器 E2E（Chrome DevTools 协议）
+│   ├── http_check.py       # HTTP 部署冒烟检查（可选）
+│   ├── process_cards.py    # 卡面插画后处理（下载自 Wikimedia Commons，Pillow）
+│   └── make_sounds.py      # 音效 WAV 生成（numpy）
 ├── src/
 │   ├── main.js             # 主控制器：状态机 / 路由 / 页面渲染 / 事件
 │   ├── data/
@@ -86,7 +91,10 @@ yan-tu-mi-dian/
 │   │   ├── cards-ui.js     # 程序化 SVG 卡面
 │   │   └── share.js        # Canvas 分享卡
 │   └── styles/             # global / home / cards / screens / result
-└── assets/                 # 预留目录（含替换说明，见各 README.md）
+└── assets/
+    ├── cards/              # ★ 22 张卡面插画（公有领域图源，见目录内 README）
+    ├── sounds/             # ★ 5 个音效 WAV（本地生成，见目录内 README）
+    └── backgrounds/        # 预留目录（含背景图替换说明）
 ```
 
 所有文件通过全局命名空间 `YTM` 协作，`index.html` 底部的 `<script>` 顺序即加载顺序，**请勿打乱**。
@@ -193,9 +201,15 @@ yan-tu-mi-dian/
    原创保研牌，扩充到 78 张，引擎无需改动。
 3. **更多牌阵**：凯尔特十字等，按上文「如何增加新的牌阵」扩展。
 4. **PWA 离线安装**：加 manifest + Service Worker，手机上可「添加到主屏幕」。
-5. **真实插画与音效**：按 `assets/` 下各 README 的替换说明接入。
+5. **插画精细化**：为插画做统一的暗金调色/描边处理，或委托原创卡面；高分辨率版本配合懒加载。
 6. **分享图个性化**：把用户的问题、状态、学校梯度等印在命运卡上；增加「朋友帮我抽」模式。
 7. **数据统计彩蛋**：命运簿里统计「抽到最多的牌 / 最常见关键词」，生成年度研途回顾。
+
+## 🖼️ 素材与版权
+
+- **卡面插画**：Rider–Waite–Smith 塔罗牌（1909 年，美国公有领域）与 Flammarion 木刻版画（1888 年，公有领域），均来自 Wikimedia Commons；来源与授权详情见 [assets/cards/README.md](assets/cards/README.md)。
+- **音效**：由 `scripts/make_sounds.py` 本地合成生成，无第三方版权。
+- **代码与文案**：本项目原创。
 
 ## ⚖️ 设计原则（写给后续维护者）
 

@@ -1,7 +1,7 @@
 /* ============================================================
-   研途秘典 · 音效（WebAudio 合成，无需音频文件）
+   研途秘典 · 音效（真实 WAV 文件，WebAudio 合成器兜底）
    默认静音；右上角开关切换，偏好存入 localStorage。
-   如需替换为真实音频，请见 assets/sounds/README.md。
+   音频文件位于 assets/sounds/，可用 scripts/make_sounds.py 重新生成。
    ============================================================ */
 (function (global) {
   "use strict";
@@ -10,6 +10,47 @@
 
   var ctx = null, master = null, enabled = false;
   var KEY = "ytm_sound";
+  var NAMES = ["click", "draw", "flip", "reveal", "result"];
+  var audioPool = {};
+  var fileFailed = {};
+
+  /* ---------------- 真实音频文件 ---------------- */
+
+  function fileSrc(name) { return "assets/sounds/" + name + ".wav"; }
+
+  function loadFile(name) {
+    var A = global.Audio;
+    if (!A || fileFailed[name]) return;
+    if (!audioPool[name]) {
+      var a = new A(fileSrc(name));
+      a.preload = "auto";
+      a.volume = 0.6;
+      a.addEventListener("error", function () { fileFailed[name] = true; });
+      audioPool[name] = a;
+    }
+  }
+
+  function preload() {
+    for (var i = 0; i < NAMES.length; i++) loadFile(NAMES[i]);
+  }
+
+  function playFile(name) {
+    var A = global.Audio;
+    if (!A || fileFailed[name]) return false;
+    loadFile(name);
+    var a = audioPool[name];
+    if (!a) return false;
+    try {
+      a.currentTime = 0;
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function () { /* 自动播放受限：静默 */ });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* ---------------- WebAudio 合成器（兜底） ---------------- */
 
   function ensure() {
     if (!ctx) {
@@ -68,6 +109,7 @@
 
   function play(name) {
     if (!enabled) return;
+    if (playFile(name)) return; /* 优先播放真实音频文件 */
     try {
       switch (name) {
         case "click":
@@ -115,6 +157,7 @@
     play: play,
     setEnabled: setEnabled,
     isEnabled: isEnabled,
-    unlock: ensure
+    unlock: ensure,
+    preload: preload
   };
 })(typeof window !== "undefined" ? window : globalThis);

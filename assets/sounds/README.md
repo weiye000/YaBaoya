@@ -1,13 +1,25 @@
-# assets/sounds · 音效资源
+# assets/sounds · 音效文件
 
-当前版本（V1）音效由 `src/ui/sound.js` 用 **WebAudio 实时合成**，无音频文件依赖，默认静音（右上角开关）。
+V1.1 起，音效使用**真实 WAV 文件**（本目录，44.1kHz / 16-bit / 单声道）：
 
-已实现音效：`click`（点击）/ `draw`（抽牌）/ `flip`（翻牌）/ `reveal`（揭示）/ `result`（结果）。
+| 文件 | 用途 | 时长 |
+|---|---|---|
+| `click.wav` | 按钮点击 | 0.07s |
+| `draw.wav` | 抽牌（洗牌风声） | 0.45s |
+| `flip.wav` | 翻牌（纸页翻动 + 落牌声） | 0.32s |
+| `reveal.wav` | 单张揭示（钟鸣） | 1.15s |
+| `result.wav` | 结果呈现（上行琶音） | 2.00s |
 
-如需替换为真实音频：
+默认静音（右上角开关），偏好存于 localStorage。所有文件为本地生成，无版权风险。
 
-1. 将文件放入本目录：`click.mp3`、`draw.mp3`、`flip.mp3`、`reveal.mp3`、`result.mp3`；
-2. 修改 `src/ui/sound.js` 的 `play(name)`，改为：
-   ```js
-   new Audio("assets/sounds/" + name + ".mp3").play();
-   ```
+## 加载失败时的兜底
+
+`src/ui/sound.js` 播放逻辑为：**优先播放 WAV 文件；文件缺失或加载失败时自动回落到内置的 WebAudio 合成器**，游戏功能不受影响。
+
+## 更换音效
+
+直接用同名文件替换本目录中的 WAV 即可，无需改代码。
+
+## 重新生成
+
+`python scripts/make_sounds.py`（依赖 numpy）会按现设计重新生成全部 5 个文件。

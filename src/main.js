@@ -597,8 +597,11 @@
       }
     });
 
-    /* 首次交互解锁音频 */
-    var unlock = function () { YTM.ui.sound.unlock(); };
+    /* 首次交互解锁音频并预加载音效文件 */
+    var unlock = function () {
+      YTM.ui.sound.unlock();
+      YTM.ui.sound.preload();
+    };
     document.addEventListener("pointerdown", unlock, { once: true, passive: true });
   }
 

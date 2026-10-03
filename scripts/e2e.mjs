@@ -130,6 +130,17 @@ try {
   check(await cdp.eval(`document.querySelector('#screen-draw').classList.contains('active')`), "移动：开始抽牌 → 抽牌页");
   check(await cdp.eval(`document.querySelectorAll('#draw-spread .spread-card').length === 5`), "移动：5 张牌背就位");
   check(await cdp.eval(`getComputedStyle(document.querySelector('#btn-result')).display === 'none'`), "移动：翻牌前解读按钮不可见");
+  const imgsOk = await cdp.eval(`new Promise(res => {
+    const ids = YTM.data.cards.map(c => c.id);
+    let left = ids.length; let ok = true;
+    ids.forEach(id => {
+      const i = new Image();
+      i.onload = () => { if (--left === 0) res(ok); };
+      i.onerror = () => { ok = false; if (--left === 0) res(ok); };
+      i.src = 'assets/cards/' + id + '.jpg';
+    });
+  })`);
+  check(imgsOk, "移动：22 张卡面插画全部可加载");
   await cdp.shot("04-draw-mobile.png");
 
   for (let i = 0; i < 5; i++) {
@@ -137,6 +148,7 @@ try {
     await sleep(900);
   }
   check(await cdp.eval(`document.querySelectorAll('#draw-spread .spread-card.flipped').length === 5`), "移动：5 张牌全部翻开");
+  check(await cdp.eval(`document.querySelectorAll('#draw-spread .card-front svg image').length === 5`), "移动：翻开的牌面嵌入插画（5 张）");
   check(await cdp.eval(`!document.querySelector('#btn-result').hidden`), "移动：出现「查看完整解读」");
   check(await cdp.eval(`getComputedStyle(document.querySelector('#btn-result')).display !== 'none'`), "移动：翻牌后解读按钮可见");
   await cdp.shot("05-reveal-mobile.png");

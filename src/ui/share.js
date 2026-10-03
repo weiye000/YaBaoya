@@ -54,7 +54,34 @@
     return lines;
   }
 
-  function drawMiniCard(ctx, card, reversed, cx, cy, w, h) {
+  /* 异步加载图片；失败或无 Image 环境时返回 null（走星图兜底） */
+  function loadImg(src) {
+    return new Promise(function (resolve) {
+      var Img = global.Image;
+      if (!Img) { resolve(null); return; }
+      var img = new Img();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { resolve(null); };
+      img.src = src;
+    });
+  }
+
+  /* 按目标区域 cover 裁剪绘制图片 */
+  function drawCoverImage(ctx, img, cx, cy, w, h) {
+    var iw = img.naturalWidth || img.width;
+    var ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    var scale = Math.max(w / iw, h / ih);
+    var sw = w / scale, sh = h / scale;
+    var sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+    ctx.save();
+    rr(ctx, cx - w / 2, cy - h / 2, w, h, 18);
+    ctx.clip();
+    ctx.drawImage(img, sx, sy, sw, sh, cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
+  }
+
+  function drawMiniCard(ctx, card, reversed, cx, cy, w, h, artImg) {
     var p = card.palette || ["#c9a45c", "#2a2a5e"];
     var grad = ctx.createLinearGradient(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
     grad.addColorStop(0, p[0]);
@@ -66,46 +93,47 @@
     rr(ctx, cx - w / 2, cy - h / 2, w, h, 18);
     ctx.fill();
     ctx.restore();
-    ctx.strokeStyle = "rgba(" + GOLD + ",0.9)";
-    ctx.lineWidth = 2.5;
-    rr(ctx, cx - w / 2, cy - h / 2, w, h, 18);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(" + GOLD + ",0.35)";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 7]);
-    rr(ctx, cx - w / 2 + 12, cy - h / 2 + 12, w - 24, h - 24, 12);
-    ctx.stroke();
-    ctx.setLineDash([]);
 
-    /* 编号 */
-    ctx.fillStyle = "rgba(232,207,143,0.95)";
-    ctx.font = "22px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.fillText(ROMANS[card.no] || String(card.no), cx, cy - h / 2 + 46);
+    if (artImg) {
+      /* 真实插画 */
+      drawCoverImage(ctx, artImg, cx, cy, w, h);
+    } else {
+      /* 星图兜底 + 编号 */
+      var s = YTM.ui.cards.sigilPoints(card.no * 7919 + 17);
+      var scale = (w * 0.52) / 96;
+      ctx.save();
+      ctx.translate(cx, cy - h * 0.1);
+      ctx.scale(scale, scale);
+      ctx.strokeStyle = "rgba(232,207,143,0.55)";
+      ctx.lineWidth = 1.6 / scale;
+      var i, a, b;
+      for (i = 0; i < s.links.length; i++) {
+        a = s.pts[s.links[i][0]]; b = s.pts[s.links[i][1]];
+        ctx.beginPath();
+        ctx.moveTo(a[0] - 48, a[1] - 48);
+        ctx.lineTo(b[0] - 48, b[1] - 48);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(232,207,143,0.95)";
+      for (i = 0; i < s.pts.length; i++) {
+        ctx.beginPath();
+        ctx.arc(s.pts[i][0] - 48, s.pts[i][1] - 48, i === 0 ? 5 / scale : 2.6 / scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.fillStyle = "rgba(232,207,143,0.95)";
+      ctx.font = "22px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.fillText(ROMANS[card.no] || String(card.no), cx, cy - h / 2 + 46);
+    }
 
-    /* 星图徽记 */
-    var s = YTM.ui.cards.sigilPoints(card.no * 7919 + 17);
-    var scale = (w * 0.52) / 96;
-    ctx.save();
-    ctx.translate(cx, cy - h * 0.06);
-    ctx.scale(scale, scale);
-    ctx.strokeStyle = "rgba(232,207,143,0.55)";
-    ctx.lineWidth = 1.6 / scale;
-    var i, a, b;
-    for (i = 0; i < s.links.length; i++) {
-      a = s.pts[s.links[i][0]]; b = s.pts[s.links[i][1]];
-      ctx.beginPath();
-      ctx.moveTo(a[0] - 48, a[1] - 48);
-      ctx.lineTo(b[0] - 48, b[1] - 48);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "rgba(232,207,143,0.95)";
-    for (i = 0; i < s.pts.length; i++) {
-      ctx.beginPath();
-      ctx.arc(s.pts[i][0] - 48, s.pts[i][1] - 48, i === 0 ? 5 / scale : 2.6 / scale, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    /* 底部名牌渐变 */
+    var plate = ctx.createLinearGradient(0, cy + h * 0.18, 0, cy + h / 2);
+    plate.addColorStop(0, "rgba(11,11,28,0)");
+    plate.addColorStop(0.5, "rgba(11,11,28,0.8)");
+    plate.addColorStop(1, "rgba(11,11,28,0.96)");
+    ctx.fillStyle = plate;
+    ctx.fillRect(cx - w / 2, cy + h * 0.18, w, h * 0.32);
 
     /* 逆位徽章 */
     if (reversed) {
@@ -119,6 +147,18 @@
       ctx.restore();
     }
 
+    /* 金色边框 */
+    ctx.strokeStyle = "rgba(" + GOLD + ",0.9)";
+    ctx.lineWidth = 2.5;
+    rr(ctx, cx - w / 2, cy - h / 2, w, h, 18);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(" + GOLD + ",0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 7]);
+    rr(ctx, cx - w / 2 + 12, cy - h / 2 + 12, w - 24, h - 24, 12);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
     /* 牌名与关键词 */
     ctx.fillStyle = "#e9e4d8";
     ctx.font = "500 46px 'Noto Serif SC','Songti SC',serif";
@@ -130,7 +170,7 @@
   }
 
   function buildShareCard(canvas, result, seed) {
-    if (!canvas) return;
+    if (!canvas) return Promise.resolve();
     canvas.width = W;
     canvas.height = H;
     var ctx = canvas.getContext("2d");
@@ -259,7 +299,6 @@
     ctx.fillStyle = "rgba(" + GOLD + ",0.95)";
     ctx.font = "30px 'Noto Serif SC','Songti SC',serif";
     ctx.fillText("今 日 命 运 牌", W / 2, 772);
-    drawMiniCard(ctx, result.finalCard, result.finalCard.reversed, W / 2, 1030, 270, 450);
     ctx.fillStyle = "rgba(232,207,143,0.95)";
     ctx.font = "30px 'Noto Serif SC','Songti SC',serif";
     ctx.fillText(
@@ -273,6 +312,13 @@
     ctx.fillStyle = "rgba(182,174,159,0.6)";
     ctx.font = "22px 'Noto Serif SC','Songti SC',serif";
     ctx.fillText("研 途 秘 典 · 保研占卜小游戏", W / 2, 1398);
+
+    /* 迷你命运牌：插画异步加载（失败自动回落星图），画完即补绘到同一画布 */
+    var card = result.finalCard;
+    var src = "assets/cards/" + (card.id || "fool") + ".jpg";
+    return loadImg(src).then(function (img) {
+      drawMiniCard(ctx, card, card.reversed, W / 2, 1030, 270, 450, img);
+    });
   }
 
   function download(canvas) {
