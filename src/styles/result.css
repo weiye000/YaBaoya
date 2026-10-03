@@ -112,6 +112,29 @@
   color: #d98d84;
 }
 
+/* ---------------- 逐牌详解 ---------------- */
+
+.percard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.percard {
+  border: 1px solid rgba(201, 164, 92, 0.28);
+  border-radius: var(--radius-m);
+  background: linear-gradient(180deg, rgba(26, 26, 56, 0.75), rgba(11, 11, 28, 0.75));
+  padding: 18px 18px 20px;
+}
+
+.percard-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
 /* ---------------- 保研画像 ---------------- */
 
 .portrait p {

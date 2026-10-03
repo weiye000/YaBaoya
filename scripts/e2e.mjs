@@ -129,6 +129,19 @@ try {
   await cdp.eval(`document.querySelector('#btn-deal').click()`); await sleep(500);
   check(await cdp.eval(`document.querySelector('#screen-draw').classList.contains('active')`), "移动：开始抽牌 → 抽牌页");
   check(await cdp.eval(`document.querySelectorAll('#draw-spread .spread-card').length === 5`), "移动：5 张牌背就位");
+  const scrollAudit = await cdp.eval(`(() => {
+    const spread = document.querySelector('#draw-spread');
+    const sr = spread.getBoundingClientRect();
+    const first = spread.querySelector('.card-slot').getBoundingClientRect();
+    const atStart = first.left >= sr.left - 2;
+    spread.scrollLeft = spread.scrollWidth;
+    const last = spread.querySelector('.card-slot:last-child').getBoundingClientRect();
+    const atEnd = last.right <= sr.right + 2;
+    return { atStart, atEnd, scrollable: spread.scrollWidth > spread.clientWidth };
+  })()`);
+  check(scrollAudit.atStart, "移动：初始位置第一张牌（优势位）完整可见");
+  check(scrollAudit.atEnd, "移动：可滚动到最后一张牌（启示位）完整可见");
+  check(scrollAudit.scrollable, "移动：五牌阵可横向滚动");
   check(await cdp.eval(`getComputedStyle(document.querySelector('#btn-result')).display === 'none'`), "移动：翻牌前解读按钮不可见");
   const imgsOk = await cdp.eval(`new Promise(res => {
     const ids = YTM.data.cards.map(c => c.id);
@@ -156,6 +169,8 @@ try {
   await cdp.eval(`document.querySelector('#btn-result').click()`); await sleep(600);
   check(await cdp.eval(`document.querySelector('#screen-result').classList.contains('active')`), "移动：进入结果页");
   check(await cdp.eval(`document.querySelectorAll('.summary-item').length === 5`), "移动：牌阵摘要 5 张");
+  check(await cdp.eval(`document.querySelectorAll('.percard').length === 5`), "移动：逐牌详解 5 张");
+  check(await cdp.eval(`document.querySelectorAll('.percard .card-detail-lead').length === 5`), "移动：每张牌都有位置×正逆位开场白");
   check(await cdp.eval(`document.querySelector('.keyword-word').textContent.length > 0`), "移动：关键词已渲染");
   check(await cdp.eval(`document.querySelectorAll('.tip-item').length >= 3`), "移动：命运提示 ≥3 条");
   await cdp.shot("06-result-mobile.png");

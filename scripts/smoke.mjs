@@ -208,6 +208,8 @@ await sleep(250);
 const result = elements.get("screen-result");
 check(result.classList.contains("active"), "进入结果页");
 check(result.innerHTML.includes("研途关键词"), "结果页渲染关键词区");
+check(result.innerHTML.includes("逐牌详解"), "结果页渲染逐牌详解区");
+check((result.innerHTML.match(/class="percard"/g) || []).length === 5, "逐牌详解覆盖全部 5 张牌");
 check(result.innerHTML.includes("保研画像"), "结果页渲染保研画像区");
 check(result.innerHTML.includes("命运提示"), "结果页渲染命运提示区");
 check(result.innerHTML.includes("给此刻的你"), "结果页渲染行动建议区");

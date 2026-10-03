@@ -60,9 +60,13 @@ console.log(`  ✓ ${cards.length} 张卡牌字段完整`);
 section("牌阵 / 主题 / 提示池");
 const spreads = YTM.data.spreads;
 assert(spreads.length === 3, "应有 3 种牌阵");
+const ROLE_SET = new Set(["strength", "weakness", "chance", "block", "revelation", "past", "present", "future"]);
 for (const s of spreads) {
   assert(s.count === s.positions.length, `牌阵 ${s.id} 卡牌数与位置数不一致`);
   assert([1, 3, 5].includes(s.count), `牌阵 ${s.id} 卡牌数异常`);
+  for (const pos of s.positions) {
+    assert(ROLE_SET.has(pos.role), `牌阵 ${s.id} 位置「${pos.label}」缺少合法 role`);
+  }
 }
 const questions = YTM.data.questions;
 assert(questions.length === 8, "应有 8 个主题");
@@ -128,18 +132,46 @@ for (const s of spreads) {
       assert(r.perCard.length === s.count, `${s.id}/${q.id}#${seed} 逐牌解读数量错误`);
       for (const pc of r.perCard) {
         assert(pc.core && pc.contextText && pc.lines.length >= 2 && pc.adviceText, `${s.id}/${q.id}#${seed} 逐牌字段缺失`);
+        assert(pc.lead && pc.lead.length > 5, `${s.id}/${q.id}#${seed} 「${pc.name}」缺少位置开场白`);
+        /* 位置角色 × 卡牌池 严格一致：短板/阻碍位必须取 shadow，其余取 light */
+        const entry = reading.cards.find((e) => e.card.name === pc.name && e.position.label === pc.label);
+        const m = entry.card.meaning[entry.reversed ? "r" : "u"];
+        const expected = pc.role === "weakness" || pc.role === "block" ? m.shadow : m.light;
+        assert(JSON.stringify(pc.lines) === JSON.stringify(expected),
+          `${s.id}/${q.id}#${seed} 「${pc.name}」${pc.label}位 的要点与位置角色不一致`);
+      }
+      /* 画像必须明确呼应牌阵中的关键位置（以五牌总运为例：优势位与阻碍位都要点名） */
+      if (s.id === "five" && q.id === "general") {
+        const joined = r.portrait.join("");
+        assert(joined.includes(reading.cards[0].card.name) && joined.includes(reading.cards[3].card.name),
+          `${s.id}/${q.id}#${seed} 总运画像未同时呼应优势位与阻碍位卡牌`);
+      }
+      /* 阻碍主题：画像首段的阻碍词必须来自本局卡牌的真实标签 */
+      if (q.id === "obstacle") {
+        const tags = new Set(reading.cards.flatMap((e) => e.card.tags.obstacle || []));
+        const hit = [...tags].some((w) => r.portrait[0].includes(w));
+        assert(hit, `${s.id}/${q.id}#${seed} 阻碍画像未命中任何本局卡牌的阻碍标签`);
       }
       assert(r.finalCard.id && r.finalCard.name && r.finalCard.palette, `${s.id}/${q.id}#${seed} 最终牌信息缺失`);
       assert(r.disclaimer.includes("仅供娱乐"), `${s.id}/${q.id}#${seed} 缺少免责声明`);
-      /* 禁止出现概率/承诺类表述 */
+      /* 禁止出现概率/承诺类表述与标点堆叠 */
       const full = JSON.stringify(r);
       assert(!/[0-9]+%|百分之|一定能|保证|铁定/.test(full), `${s.id}/${q.id}#${seed} 出现概率/承诺类表述`);
+      assert(!/。{2}|？。|！。/.test(full), `${s.id}/${q.id}#${seed} 出现标点堆叠（。。/？。）`);
     }
   }
 }
 console.log("  ✓ 24 种组合 × 20 种子 = 480 次解读全部有效，且无概率/承诺表述");
 
-/* ---------- 6. 确定性 ---------- */
+/* ---------- 6. 用户输入呼应（问题 / 阶段） ---------- */
+section("用户问题与阶段呼应");
+const rQ = YTM.game.createReading({ spreadId: "one", themeId: "general", question: "我能保研吗？", status: "大三上" });
+const resQ = YTM.game.buildResult(rQ);
+assert(resQ.portrait[0].includes("我能保研吗？"), "画像首段应回应用户的问题");
+assert(resQ.portrait.join("").includes("大三上"), "画像收尾应呼应用户所选阶段");
+console.log("  ✓ 问题与阶段均被解读文案呼应");
+
+/* ---------- 7. 确定性 ---------- */
 section("同种子可复现");
 const a = YTM.game.createReading({ spreadId: "five", themeId: "general", seed: 42 });
 const b = YTM.game.createReading({ spreadId: "five", themeId: "general", seed: 42 });

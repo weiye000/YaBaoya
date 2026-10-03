@@ -181,6 +181,7 @@
       '<span class="card-detail-name">' + esc(p.name) + '</span>' +
       '<span class="card-detail-orient' + (p.reversed ? " reversed" : "") + '">' + p.orientationLabel + '</span>' +
       '</div>' +
+      '<p class="card-detail-lead">' + esc(p.lead) + '</p>' +
       '<p class="card-detail-core">' + esc(p.core) + '</p>' +
       '<p class="card-detail-context">' + esc(p.contextText) + '</p>' +
       '<ul class="card-detail-lines">' + lines + '</ul>' +
@@ -211,7 +212,9 @@
       '<h1 class="screen-title">' + esc(reading.theme.title) + '</h1>' +
       '</div>' +
       '<div id="draw-spread" class="spread spread--' + reading.spread.id + '">' + slots + '</div>' +
-      '<p id="draw-hint" class="draw-hint">轻触卡牌，依次翻开</p>' +
+      '<p id="draw-hint" class="draw-hint">轻触卡牌，依次翻开' +
+      (reading.spread.count > 3 ? '（牌阵可左右滑动）' : '') +
+      '</p>' +
       '<div id="card-detail" class="card-detail" hidden></div>' +
       '<div class="draw-actions">' +
       '<button class="btn btn-primary btn-wide" id="btn-result" type="button" hidden>查看完整解读</button>' +
@@ -283,6 +286,22 @@
         (s.reversed ? '<span class="sum-rev">逆位</span>' : "") +
         '</div>';
     }).join("");
+    var perCardHtml = r.perCard.map(function (pc) {
+      var lines = pc.lines.map(function (l) { return "<li>" + esc(l) + "</li>"; }).join("");
+      return '<div class="percard">' +
+        '<div class="percard-head">' +
+        '<span class="card-detail-position">' + esc(pc.label) + '</span>' +
+        '<span class="card-detail-name">' + esc(pc.name) + '</span>' +
+        '<span class="card-detail-orient' + (pc.reversed ? " reversed" : "") + '">' + pc.orientationLabel + '</span>' +
+        '</div>' +
+        '<p class="card-detail-lead">' + esc(pc.lead) + '</p>' +
+        '<p class="card-detail-core">' + esc(pc.core) + '</p>' +
+        '<p class="card-detail-context">' + esc(pc.contextText) + '</p>' +
+        '<ul class="card-detail-lines">' + lines + '</ul>' +
+        '<p class="card-detail-advice">' + esc(pc.adviceText) + '</p>' +
+        '</div>';
+    }).join("");
+
     var portrait = r.portrait.map(function (p) {
       var t = p.replace(/「([^」]+)」/g, "「<strong>$1</strong>」");
       return "<p>" + t + "</p>";
@@ -309,21 +328,25 @@
       '<div class="summary-grid">' + summary + '</div>' +
       '</section>' +
       '<section class="result-section reveal-item" style="animation-delay:220ms">' +
+      '<h2>逐牌详解</h2>' +
+      '<div class="percard-list">' + perCardHtml + '</div>' +
+      '</section>' +
+      '<section class="result-section reveal-item" style="animation-delay:320ms">' +
       '<h2>你的保研画像</h2>' +
       '<div class="portrait">' + portrait + '</div>' +
       '</section>' +
-      '<section class="result-section reveal-item" style="animation-delay:320ms">' +
+      '<section class="result-section reveal-item" style="animation-delay:420ms">' +
       '<h2>命运提示</h2>' +
       '<div>' + tips + '</div>' +
       '</section>' +
-      '<section class="result-section reveal-item" style="animation-delay:420ms">' +
+      '<section class="result-section reveal-item" style="animation-delay:520ms">' +
       '<h2>给此刻的你</h2>' +
       '<div class="advice-box">' +
       '<div class="advice-label">行动建议</div>' +
       '<div class="advice-text">' + esc(r.advice) + '</div>' +
       '</div>' +
       '</section>' +
-      '<div class="result-actions reveal-item" style="animation-delay:520ms">' +
+      '<div class="result-actions reveal-item" style="animation-delay:620ms">' +
       '<button class="btn btn-primary btn-wide" id="btn-share-open" type="button">生成我的研途命运卡</button>' +
       '<button class="btn btn-ghost btn-wide" id="btn-again" type="button">再问一次</button>' +
       '<button class="text-link" id="btn-home" type="button">回到首页</button>' +
