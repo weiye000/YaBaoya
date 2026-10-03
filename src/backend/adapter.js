@@ -61,6 +61,9 @@
     adminStats: function () { return impl().adminStats(); },
     adminDeleteWish: function (id) { return impl().adminDeleteWish(id); },
 
+    /* 登录态刷新（会话失效时清除本地记忆） */
+    refreshAuthState: function () { return impl().refreshAuthState(); },
+
     saveReading: function (entry) { return impl().saveReading(entry); },
     listReadings: function (limit) { return impl().listReadings(limit); },
 

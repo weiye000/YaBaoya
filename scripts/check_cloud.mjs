@@ -148,6 +148,16 @@ try {
   const fnRes = await cdp.eval(`(() => { try { return YTM.backend.impl.cloudbase ? "impl-ok" : "no-impl"; } catch (e) { return String(e); } })()`);
   check(fnRes === "impl-ok", "cloudbase 适配器已加载");
 
+  /* 安全自检：users 集合是否对浏览器关闭直读 */
+  const secRes = await cdp.eval(`YTM.backend.impl.cloudbase.probeUsers().then(r => r).catch(e => ({ error: String((e && e.message) || e) }))`);
+  if (secRes && secRes.leaked === true) {
+    check(false, "安全：users 集合仍可被浏览器直读（当前可读到 " + secRes.count + " 条）——请把 users 规则改为 {\"read\":false,\"write\":false}");
+  } else if (secRes && secRes.error) {
+    check(false, "安全自检执行失败：" + secRes.error);
+  } else {
+    check(true, "安全：users 集合已对浏览器关闭直读");
+  }
+
   console.log(failures === 0 ? "\n云端自检全部通过 ✔" : "\n云端自检存在失败 ✗");
   try { await cdp.send("Browser.close"); } catch (e) { /* 忽略 */ }
   process.exit(failures === 0 ? 0 : 1);

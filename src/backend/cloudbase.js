@@ -283,20 +283,33 @@
       return ensureSession().then(function () {
         return db.collection("wishes").orderBy("createdAt", "desc").limit(limit || 20).get();
       }).then(function (res) {
-        return (res.data || []).map(function (row) {
-          return {
-            id: row._id,
-            text: row.text,
-            keyword: row.keyword || "心事",
-            lights: row.lights || 0,
-            mine: row.device === YTM.backend.api.deviceId(),
-            lit: false /* 由调用方合并本地点亮记录 */
-          };
-        });
+        var rows = res.data || [];
+        /* 点亮数改为实时 count（配合「仅创建者可改」安全规则，不再由客户端写回） */
+        return Promise.all(rows.map(function (row) {
+          return db.collection("lights").where({ wishId: row._id }).count().then(function (c) {
+            return {
+              id: row._id,
+              text: row.text,
+              keyword: row.keyword || "心事",
+              lights: c.total,
+              mine: row.device === YTM.backend.api.deviceId(),
+              lit: false /* 由调用方合并本地点亮记录 */
+            };
+          }).catch(function () {
+            return {
+              id: row._id,
+              text: row.text,
+              keyword: row.keyword || "心事",
+              lights: row.lights || 0,
+              mine: row.device === YTM.backend.api.deviceId(),
+              lit: false
+            };
+          });
+        }));
       });
     },
 
-    /* 点亮：文档 _id 天然防重复（同一设备重复 set 会报错） */
+    /* 点亮：文档 _id 天然防重复（同一设备重复 set 会报错）；只新增，不修改他人文档 */
     lightWish: function (id) {
       return ensureSession().then(function () {
         return db.collection("wishes").where({ _id: id }).get();
@@ -307,17 +320,32 @@
           wishId: id,
           device: YTM.backend.api.deviceId(),
           createdAt: Date.now()
-        }).then(function () {
-          /* 计数同步回 wishes（尽力而为） */
-          return db.collection("lights").where({ wishId: id }).count().then(function (c) {
-            return db.collection("wishes").doc(id).update({ lights: c.total }).catch(function () {});
-          });
         });
       }).catch(function (err) {
         if (err && /已存在|exist|already|document.*exists/i.test(err.message || "")) {
           throw new Error("已点亮");
         }
         throw err;
+      });
+    },
+
+    /* 登录态与本地记忆保持一致（会话失效时清除本地用户名标记） */
+    refreshAuthState: function () {
+      return this.loginState().then(function (state) {
+        if (state && state.username) rememberUser(state.username);
+        else forgetUser();
+        return state;
+      });
+    },
+
+    /* 安全自检：users 集合是否可被浏览器直读（仅诊断用） */
+    probeUsers: function () {
+      return ensureSession().then(function () {
+        return db.collection("users").count().then(function (c) {
+          return { leaked: true, count: c.total };
+        }).catch(function () {
+          return { leaked: false };
+        });
       });
     }
   };

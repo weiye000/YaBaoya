@@ -124,6 +124,18 @@
   function renderGate() {
     var body = $("screen-gate");
     if (!body) return;
+    body.innerHTML = '<div class="screen-body"><p class="account-note dim">确认登录状态…</p></div>';
+    /* 真实校验会话（避免仅凭本地记忆显示已登录） */
+    YTM.backend.api.refreshAuthState().then(function () {
+      renderGateContent();
+    }).catch(function () {
+      renderGateContent();
+    });
+  }
+
+  function renderGateContent() {
+    var body = $("screen-gate");
+    if (!body) return;
     var user = YTM.backend.api.user();
     var cloud = YTM.backend.api.isCloud();
     if (user) {
@@ -1203,6 +1215,8 @@
       renderTheme();
       renderSpread();
       wireGlobal();
+      /* 启动时刷新登录态：会话失效则清除本地记忆 */
+      YTM.backend.api.refreshAuthState().catch(function () {});
       nav("home");
     } catch (err) {
       if (global.console && console.error) console.error(err);

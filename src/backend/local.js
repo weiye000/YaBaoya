@@ -53,6 +53,7 @@
     isAdmin: function () { return false; },
     adminStats: function () { return Promise.reject(new Error("demo")); },
     adminDeleteWish: function () { return Promise.reject(new Error("demo")); },
+    refreshAuthState: function () { return Promise.resolve(null); },
 
     listReadings: function () { return Promise.resolve([]); },
     saveReading: function () { return Promise.resolve(null); },

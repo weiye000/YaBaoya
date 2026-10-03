@@ -44,6 +44,9 @@ function makeEl(id) {
     listeners: {},
     setAttribute(k, v) { this.attributes[k] = v; },
     getAttribute(k) { return this.attributes[k] === undefined ? null : this.attributes[k]; },
+    /* 模拟外部脚本/图片加载：设置 src 后异步触发 onload */
+    set src(v) { this._src = v; setTimeout(() => { if (this.onload) this.onload(); }, 0); },
+    get src() { return this._src; },
     addEventListener(type, fn) {
       (this.listeners[type] = this.listeners[type] || []).push(fn);
     },
@@ -74,7 +77,8 @@ globalThis.document = {
   querySelectorAll() { return []; },
   createElement() { return makeEl(""); },
   addEventListener() {},
-  body: makeEl("body")
+  body: makeEl("body"),
+  head: makeEl("head")
 };
 
 globalThis.innerWidth = 800;

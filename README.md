@@ -216,10 +216,14 @@ yan-tu-mi-dian/
 3. 工具栏点「**云开发**」按钮 → 开通环境（环境名称随意，**地域选上海**，免费额度默认生效，无需选择计费方式）——此时会打开云开发控制台网页；
 4. 云开发控制台 → **数据库** →「集合管理」→ 新建四个集合：`wishes`、`lights`、`readings`、`users`（手动创建，空表即可）；
 5. 每个集合点「权限设置」→ 选「**自定义安全规则**」→ 粘贴并保存：
-   ```json
-   { "read": true, "write": true }
-   ```
-   > 网页端接入微信云开发环境走「未登录模式」，因此使用公开读写规则；游戏代码只新增自己的数据、不修改他人数据，娱乐项目可接受。
+   - `wishes` / `lights` / `readings` 三个集合（人人可读可发，但只能改/删自己创建的）：
+     ```json
+     { "read": true, "create": true, "update": "doc._openid == auth.openid", "delete": "doc._openid == auth.openid" }
+     ```
+   - `users` 集合（浏览器彻底关闭直读，云函数不受影响）：
+     ```json
+     { "read": false, "write": false }
+     ```
 6. 云开发控制台 → **云函数** →「新建云函数」→ 名称填 `auth` → 把仓库里 [scripts/cloudfunctions/auth](scripts/cloudfunctions/auth) 下的 `index.js` 与 `package.json` 内容粘贴进去 →「保存并部署」（云端安装依赖）。这是**账号注册/登录**云函数（scrypt 加盐哈希存储密码，不部署则无法注册账号）；
 7. 控制台「**设置 → 安全配置 → WEB 安全域名**」→ 添加你的前端域名（如 `https://weiye000.github.io`；本地调试加 `http://localhost` 和 `http://127.0.0.1`）；
 8. 在云开发控制台首页/概览复制**环境 ID**（形如 `cloud1-xxxxxxxx`），填入 `src/config.backend.js` 的 `envId`，重新部署即可。
