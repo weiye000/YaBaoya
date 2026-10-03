@@ -31,9 +31,6 @@
 
   global.YTM.config.backend = {
     /* 云开发环境 ID：留空字符串 = 单机模式 */
-    envId: ""
-    /* 示例（形如）：
-    envId: "cloud1-3g2h5k8m1a2b3c4d"
-    */
+    envId: "cloud1-d9gqiv9hvb5ead833"
   };
 })(typeof window !== "undefined" ? window : globalThis);

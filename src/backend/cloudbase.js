@@ -240,7 +240,7 @@
         return db.collection("wishes").add({
           text: text,
           keyword: keyword || "心事",
-          device: YTM.backend.deviceId(),
+          device: YTM.backend.api.deviceId(),
           createdAt: Date.now()
         });
       }).then(function (res) {
@@ -265,7 +265,7 @@
             text: row.text,
             keyword: row.keyword || "心事",
             lights: row.lights || 0,
-            mine: row.device === YTM.backend.deviceId(),
+            mine: row.device === YTM.backend.api.deviceId(),
             lit: false /* 由调用方合并本地点亮记录 */
           };
         });
@@ -278,10 +278,10 @@
         return db.collection("wishes").where({ _id: id }).get();
       }).then(function (res) {
         if (!res.data || !res.data.length) throw new Error("这条心事已消失");
-        var docId = id + "_" + YTM.backend.deviceId();
+        var docId = id + "_" + YTM.backend.api.deviceId();
         return db.collection("lights").doc(docId).set({
           wishId: id,
-          device: YTM.backend.deviceId(),
+          device: YTM.backend.api.deviceId(),
           createdAt: Date.now()
         }).then(function () {
           /* 计数同步回 wishes（尽力而为） */

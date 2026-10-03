@@ -597,7 +597,10 @@
       syncCloud();
     }).catch(function (err) {
       var msg = err && err.message ? err.message : "操作失败";
-      showErr(/云函数调用失败|未就绪/.test(msg) ? "云服务未配置好（检查云函数是否已部署）" : msg);
+      if (/Function not found|FUNCTION_NOT_FOUND|ResourceNotFound|云函数调用失败|未就绪/.test(msg)) {
+        msg = "账号功能暂不可用：云函数未部署（当前套餐可能不支持云函数）。可继续使用访客同步码。";
+      }
+      showErr(msg);
       if (btn) { btn.disabled = false; btn.textContent = kind === "login" ? "登录" : "注册新账号"; }
     });
   }
