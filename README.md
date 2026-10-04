@@ -2,6 +2,10 @@
 
 > 你的保研之路，究竟会通向哪里？
 
+**线上体验：<https://yantu-midian.yabaoyan.workers.dev>**（Cloudflare 免费托管 + D1 数据库，无需备案）
+
+> 云端部署与运维指南：[docs/CLOUDFLARE_GUIDE.md](docs/CLOUDFLARE_GUIDE.md)（架构、命令、数据表、挂自己域名的步骤）
+
 一款面向中国大学生的**轻量级娱乐网页游戏**：保研 × 塔罗牌 × 命运占卜 × 大学生活 × 轻心理测试。
 写下你的问题，抽取命运之牌，让随机叙事诱发一次关于自己的思考。
 
