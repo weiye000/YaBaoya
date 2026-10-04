@@ -32,10 +32,8 @@
   global.YTM.config.backend = {
     /* 云开发环境 ID：留空字符串 = 单机模式 */
     envId: "cloud1-d9gqiv9hvb5ead833",
-    /* 匿名登录开关：
-       - false（当前值）：微信云开发网页端——匿名登录不被认可，
-         直接走「未登录模式」（需控制台已开启未登录访问权限）
-       - true：腾讯云开发环境——匿名登录可用 */
-    anonymousLogin: false
+    /* 匿名登录：需在云开发控制台「登录授权」中开启「匿名登录」。
+       新版 SDK 的网页未登录访问同样依赖它（先取匿名会话再访问资源） */
+    anonymousLogin: true
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -376,46 +376,67 @@
       });
     },
 
-    /* 认证诊断：逐步尝试并返回每一步的真实结果（含未登录模式下的云函数探测） */
+    /* 认证方式全量探测：v2/v1 两套匿名登录 API + 未登录模式，逐一验证实际可用性 */
     probeAuth: function () {
-      return init(YTM.config.backend).then(function (ok) {
-        if (!ok) return { step: "init", ok: false, err: "SDK 初始化失败" };
-        var cfg = YTM.config.backend || {};
-        return auth.getLoginState().then(function (state) {
-          if (state && state.user && state.user.uid) {
-            return { step: "logged-in", ok: true, uid: state.user.uid };
-          }
-          if (state) {
-            return auth.signOut().catch(function () {}).then(function () {
-              return { step: "cleared-bad-state", ok: true };
-            });
-          }
-          if (cfg.anonymousLogin === false) {
-            return app.callFunction({
-              name: "auth",
-              data: { action: "login", username: "probe-none", password: "x123456" }
-            }).then(function (res) {
-              return {
-                step: "identityless-callFunction",
-                ok: true,
-                result: res && res.result ? { code: res.result.code, message: res.result.message } : res
-              };
-            }).catch(function (e) {
-              return { step: "identityless-callFunction", ok: false, err: errText(e) };
-            });
-          }
-          try {
-            return auth.anonymousAuthProvider().signIn().then(function (s) {
-              if (s && s.user && s.user.uid) return { step: "anonymous", ok: true, uid: s.user.uid };
-              return { step: "anonymous-empty", ok: false, err: "匿名登录返回空凭证" };
-            }).catch(function (e) {
-              return { step: "anonymous", ok: false, err: errText(e) };
-            });
-          } catch (e) {
-            return { step: "anonymous-provider", ok: false, err: errText(e) };
-          }
+      var report = { sdk: {}, steps: [] };
+      function push(step, ok, detail) {
+        report.steps.push({ step: step, ok: ok, detail: detail || "" });
+      }
+      function tryDb() {
+        return db.collection("wishes").limit(1).get().then(function (r) {
+          return { ok: true, n: (r.data || []).length };
         }).catch(function (e) {
-          return { step: "getLoginState", ok: false, err: errText(e) };
+          return { ok: false, err: errText(e) };
+        });
+      }
+      return init(YTM.config.backend).then(function (ok) {
+        if (!ok) { push("init", false, "SDK 初始化失败"); return report; }
+        report.sdk = {
+          hasSignInAnonymously: typeof auth.signInAnonymously === "function",
+          hasAnonymousAuthProvider: typeof auth.anonymousAuthProvider === "function",
+          hasGetLoginState: typeof auth.getLoginState === "function",
+          hasCustomAuthProvider: typeof auth.customAuthProvider === "function",
+          keys: Object.keys(auth).slice(0, 25)
+        };
+        return auth.getLoginState().then(function (state) {
+          push("getLoginState", !!state, state && state.user ? "uid=" + state.user.uid : "无登录态");
+          var chain = Promise.resolve();
+          if (typeof auth.signInAnonymously === "function") {
+            chain = chain.then(function () {
+              return auth.signInAnonymously().then(function (res) {
+                push("signInAnonymously(v2)", true, JSON.stringify((res && (res.user || res)) || "").slice(0, 400));
+                return tryDb().then(function (r) { push("db-after-v2", r.ok, r.ok ? "读到 " + r.n + " 条" : r.err); });
+              }).catch(function (e) {
+                push("signInAnonymously(v2)", false, errText(e).slice(0, 400));
+              });
+            });
+          }
+          if (typeof auth.anonymousAuthProvider === "function") {
+            chain = chain.then(function () {
+              return auth.anonymousAuthProvider().signIn().then(function (res) {
+                push("anonymousAuthProvider(v1)", true, JSON.stringify((res && (res.user || res)) || "").slice(0, 120));
+                return tryDb().then(function (r) { push("db-after-v1", r.ok, r.ok ? "读到 " + r.n + " 条" : r.err); });
+              }).catch(function (e) {
+                push("anonymousAuthProvider(v1)", false, errText(e));
+              });
+            });
+          }
+          /* 最后测一次：整套流程里真正用到的 ensureSession + 读库 */
+          return chain.then(function () {
+            return ensureSession().then(function () {
+              return tryDb().then(function (r) {
+                push("ensureSession+db", r.ok, r.ok ? "读到 " + r.n + " 条" : r.err);
+                report.works = r.ok;
+                return report;
+              });
+            }).catch(function (e) {
+              push("ensureSession", false, errText(e));
+              return report;
+            });
+          });
+        }).catch(function (e) {
+          push("getLoginState", false, errText(e));
+          return report;
         });
       });
     }

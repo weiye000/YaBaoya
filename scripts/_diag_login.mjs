@@ -92,16 +92,17 @@ try {
 
   const r = await cdp.eval(`(async () => {
     const out = {};
-    try {
-      out.auth = await YTM.backend.impl.cloudbase.probeAuth();
-    } catch (e) {
-      out.auth = { error: String((e && (e.message || e.errMsg)) || JSON.stringify(e)) };
-    }
-    try {
-      out.login = await YTM.backend.api.login("diag-probe-xyz", "123456").then(x => ({ ok: true, x: JSON.stringify(x) }));
-    } catch (e) {
-      out.login = { ok: false, err: String((e && (e.message || e.errMsg || e.msg)) || JSON.stringify(e)) };
-    }
+    const grab = async (fn) => { try { return { ok: true, v: await fn() }; } catch (e) { return { ok: false, err: String((e && (e.message || e.errMsg || e.msg || e.error)) || JSON.stringify(e)) }; } };
+    out.auth = await grab(() => YTM.backend.impl.cloudbase.probeAuth());
+    out.dbListWishes = await grab(async () => { const l = await YTM.backend.api.listWishes(3); return "条数=" + l.length; });
+    out.dbPostWish = await grab(async () => { const w = await YTM.backend.api.postWish("（自检）云端连接测试", "自检"); return "已发 id=" + w.id; });
+    out.dbListReadings = await grab(async () => { const l = await YTM.backend.api.listReadings(3); return "条数=" + l.length; });
+    out.dbSaveReading = await grab(async () => {
+      const reading = YTM.game.createReading({ spreadId: "one", themeId: "general", seed: 999 });
+      await YTM.backend.api.saveReading({ seed: reading.seed, themeTitle: "自检", spreadName: "单牌占卜", keyword: "自检", finalCardName: "自检", reading: reading, result: { keyword: { word: "自检" } } });
+      return "写入成功";
+    });
+    out.callFunction = await grab(async () => YTM.backend.api.login("probe-none", "x123456"));
     return out;
   })()`);
   console.log("诊断结果: " + JSON.stringify(r, null, 2));
