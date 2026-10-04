@@ -165,20 +165,33 @@ try {
   await sleep(300);
   await cdp.shot("02-home-mobile.png");
 
-  /* 身份选择门（模拟已配置云端；打桩会话避免真实网络，走完门后切回单机模式） */
-  await cdp.eval(`YTM.config.backend.provider = "worker"`); await sleep(100);
+  /* 身份选择门（打桩会话 + 后端方法，避免真实网络） */
   await cdp.eval(`YTM.backend.impl.worker.loginState = () => Promise.resolve(null)`); await sleep(100);
+  await cdp.eval(`(() => {
+    const w = YTM.backend.impl.worker;
+    let wishes = [];
+    w.user = () => null;
+    w.refreshAuthState = () => Promise.resolve(null);
+    w.saveReading = () => Promise.resolve();
+    w.listReadings = () => Promise.resolve([]);
+    w.getSyncCode = () => "ABCD2345";
+    w.bindSyncCode = (c) => Promise.resolve(c);
+    w.resetSyncCode = () => Promise.resolve("WXYZ5678");
+    w.listWishes = () => Promise.resolve(wishes.slice());
+    w.postWish = (t, k) => { const item = { id: "w" + (wishes.length + 1), text: t, keyword: k || "研途", lights: 0, mine: true }; wishes.unshift(item); return Promise.resolve(item); };
+    w.lightWish = (id) => Promise.resolve({ lights: 1 });
+    w.isAdmin = () => false;
+    w.adminStats = () => Promise.reject(new Error("need admin"));
+    w.adminDeleteWish = () => Promise.reject(new Error("need admin"));
+  })()`); await sleep(100);
   await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(500);
   check(await cdp.eval(`document.querySelector('#screen-gate').classList.contains('active')`), "移动：开始占卜 → 身份选择门");
   check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('匿名进入研途')`), "移动：身份门含「匿名进入」");
-  check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('注册新账号并进入')`), "移动：身份门含注册入口");
+  check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('账号密码登录')`), "移动：身份门含「账号密码登录」");
+  check(await cdp.eval(`document.querySelector('#screen-gate .pass-toggle') !== null`), "移动：密码框含「显示/隐藏密码」切换");
   await cdp.shot("02b-gate-mobile.png");
   await cdp.eval(`document.querySelector('#btn-gate-anon').click()`); await sleep(350);
   check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "移动：匿名进入 → 主题页");
-  await cdp.eval(`YTM.config.backend.provider = "local"`); await sleep(100);
-
-  await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(350);
-  check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "移动：开始占卜 → 主题页");
   await cdp.shot("03-theme-mobile.png");
 
   await cdp.eval(`document.querySelector('.theme-card').click()`); await sleep(350);
@@ -274,16 +287,16 @@ try {
   check(await cdp.eval(`document.querySelector('.collection-progress').textContent.includes('5 / 22')`), "移动：图鉴进度为 5/22");
   await cdp.shot("08-history-mobile.png");
   await cdp.eval(`document.querySelector('#btn-account-open').click()`); await sleep(200);
-  check(await cdp.eval(`document.querySelector('#account-body').textContent.includes('单机模式')`), "移动：单机模式显示说明文案");
+  check(await cdp.eval(`document.querySelector('#account-body').textContent.includes('账号密码登录')`), "移动：云同步弹窗含「账号密码登录」");
+  check(await cdp.eval(`document.querySelector('#account-body .pass-toggle') !== null`), "移动：账号密码框含「显示/隐藏密码」切换");
   await cdp.shot("09-sync-mobile.png");
   await cdp.eval(`document.querySelectorAll('[data-close="modal-account"]')[0].click()`); await sleep(200);
   await cdp.eval(`document.querySelectorAll('[data-close="modal-history"]')[0].click()`); await sleep(200);
 
-  /* 心事墙（演示模式） */
+  /* 心事墙 */
   await cdp.eval(`document.querySelector('#btn-wish').click()`); await sleep(400);
   check(await cdp.eval(`document.querySelector('#modal-wish').hidden === false`), "移动：心事墙弹窗打开");
-  check(await cdp.eval(`document.querySelector('#wish-body').textContent.includes('演示模式')`), "移动：演示模式显示提示");
-  check(await cdp.eval(`document.querySelectorAll('#wish-list .wish-item').length >= 3`), "移动：展示示例心事");
+  check(await cdp.eval(`document.querySelector('#wish-body').textContent.includes('心事墙还空着')`), "移动：空心事墙显示占位文案");
   await cdp.eval(`document.querySelector('#wish-text').value = 'E2E 测试心事'; document.querySelector('#wish-text').dispatchEvent(new Event('input'));`); await sleep(100);
   await cdp.eval(`document.querySelector('#btn-wish-post').click()`); await sleep(400);
   check(await cdp.eval(`document.querySelector('#wish-list').textContent.includes('E2E 测试心事')`), "移动：心事发布成功并显示「我的」标记");

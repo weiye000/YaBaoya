@@ -92,7 +92,8 @@ try {
   await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(1200);
   check(await cdp.eval(`document.querySelector('#screen-gate').classList.contains('active')`), "开始占卜 → 身份门");
   check(await cdp.eval(`!!document.querySelector('#btn-gate-anon')`), "身份门含「匿名进入」");
-  check(await cdp.eval(`!!document.querySelector('#btn-gate-register')`), "身份门含注册入口");
+  check(await cdp.eval(`document.querySelector('#screen-gate').textContent.includes('账号密码登录')`), "身份门含「账号密码登录」");
+  check(await cdp.eval(`!!document.querySelector('#screen-gate .pass-toggle')`), "密码框含「显示/隐藏密码」切换");
 
   await cdp.eval(`document.querySelector('#btn-gate-anon').click()`); await sleep(600);
   check(await cdp.eval(`document.querySelector('#screen-theme').classList.contains('active')`), "匿名进入 → 主题页");
@@ -110,9 +111,10 @@ try {
   const username = "自检" + Date.now().toString().slice(-6);
   await cdp.eval(`document.querySelector('#btn-wish').click()`); await sleep(400);
   await cdp.eval(`document.querySelector('#btn-start').click()`); await sleep(800);
+  await cdp.eval(`document.querySelector('#screen-gate .seg-btn[data-auth-mode="register"]').click()`); await sleep(200);
   await cdp.eval(`document.querySelector('#gate-name').value = ${JSON.stringify(username)}`);
   await cdp.eval(`document.querySelector('#gate-pass').value = "test123456"`);
-  await cdp.eval(`document.querySelector('#btn-gate-register').click()`);
+  await cdp.eval(`document.querySelector('#btn-gate-submit').click()`);
   await sleep(3500);
   const after = await cdp.eval(`({ theme: document.querySelector('#screen-theme').classList.contains('active'), err: (document.querySelector('#gate-error') || {}).textContent || "", user: JSON.stringify(YTM.backend.api.user()) })`);
   check(after.theme, "注册成功后进入主题页", after.err);

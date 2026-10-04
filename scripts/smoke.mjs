@@ -113,7 +113,6 @@ const files = [
   "src/game/draw.js",
   "src/game/interpretation.js",
   "src/config.backend.js",
-  "src/backend/local.js",
   "src/backend/worker.js",
   "src/backend/adapter.js",
   "src/ui/starfield.js",
@@ -125,11 +124,24 @@ const files = [
 ];
 for (const f of files) {
   await import(pathToFileURL(path.resolve(f)).href);
-  if (f === "src/config.backend.js") {
-    /* 冒烟测试强制单机模式（身份门测试会临时模拟云端） */
-    globalThis.YTM.config.backend.provider = "local";
-  }
 }
+
+/* 冒烟测试桩：拦截 Worker 后端的 fetch（Node 无网络，用假响应代替） */
+function stubJson(o) {
+  return { ok: true, status: 200, json: async () => o };
+}
+globalThis.fetch = async function (url, opts) {
+  const u = String(url);
+  const method = (opts && opts.method) || "GET";
+  const body = opts && opts.body ? JSON.parse(opts.body) : {};
+  if (u.includes("/api/session")) return stubJson({ code: 0, device: "d_smoke", token: "smoke-token" });
+  if (u.includes("/api/me")) return stubJson({ code: 1, message: "未登录" });
+  if (u.includes("/api/history")) return stubJson(method === "POST" ? { code: 0 } : { code: 0, items: [] });
+  if (u.includes("/api/wishes")) return stubJson(method === "POST" ? { code: 0, item: { id: "w1", text: body.text, keyword: "测试", lights: 0, mine: true } } : { code: 0, items: [] });
+  if (u.includes("/api/lights")) return stubJson({ code: 0, lights: 1 });
+  if (u.includes("/api/admin")) return stubJson({ code: 0, users: [], counts: { users: 0, readings: 0, wishes: 0, lights: 0 } });
+  return stubJson({ code: 1, message: "not found" });
+};
 
 /* ---------- 断言工具 ---------- */
 let failures = 0;
@@ -181,9 +193,12 @@ check(svgOk, "22 张卡牌正/逆位 SVG 均可生成且嵌入插画引用");
 /* ---------- 第二阶段：完整用户旅程 ---------- */
 console.log("  · 模拟完整旅程");
 
-fire(screens, makeTarget("#btn-start"));                       // 首页 → 主题页
+fire(screens, makeTarget("#btn-start"));                       // 首页 → 身份门
 await sleep(200);
-check(theme.classList.contains("active"), "点击「开始占卜」进入主题页");
+check(elements.get("screen-gate").classList.contains("active"), "点击「开始占卜」进入身份门");
+fire(screens, makeTarget("#btn-gate-anon"));                    // 身份门 → 主题页
+await sleep(200);
+check(theme.classList.contains("active"), "匿名进入 → 主题页");
 
 fire(screens, makeTarget("[data-theme-id]", { "data-theme-id": "general" }));  // 选「保研总运」
 await sleep(200);
@@ -241,60 +256,46 @@ fire(screens, makeTarget("#btn-again"));
 await sleep(200);
 check(theme.classList.contains("active"), "「再问一次」回到主题页");
 
-/* ---------- 第三阶段：单机（演示）模式 ---------- */
-console.log("  · 单机模式");
+/* ---------- 第三阶段：云端适配器 + 心事墙（fetch 已打桩） ---------- */
+console.log("  · 云端适配器");
 const B = YTM.backend.api;
-check(B.mode() === "demo" && !B.isCloud(), "未配置云端时为单机模式");
-check(YTM.backend.impl.local && YTM.backend.impl.local.mode() === "demo", "单机适配器已加载");
+check(B.mode() === "cloud" && B.isCloud(), "始终为云端模式（无单机模式）");
 check(YTM.backend.impl.worker && YTM.backend.impl.worker.mode() === "cloud", "Cloudflare Worker 适配器已加载");
-check(B.getSyncCode() === null, "单机模式无同步码");
-check(B.user() === null, "演示模式无账号");
+check(YTM.backend.impl.local === undefined, "单机适配器已移除");
+check(B.user() === null, "初始无账号");
 const demoState = await B.loginState();
-check(demoState === null, "演示模式登录状态为 null");
-let loginRejected = false;
-await B.login("someone", "123456").catch(function () { loginRejected = true; });
-check(loginRejected, "演示模式登录被拒绝（需配置云端）");
-check(typeof B.isAdmin === "function" && B.isAdmin() === false, "演示模式无管理员身份");
-let adminRejected = false;
-await B.adminStats().catch(function () { adminRejected = true; });
-check(adminRejected, "演示模式管理操作被拒绝（云端校验）");
-const demoWishes = await B.listWishes();
-check(demoWishes.length === 3, "演示心事墙返回 3 条示例");
+check(demoState === null, "未登录时登录状态为 null");
+check(typeof B.isAdmin === "function" && B.isAdmin() === false, "非管理员 isAdmin=false");
+check(typeof B.adminStats === "function", "管理接口存在（云端校验）");
+const wishes = await B.listWishes();
+check(Array.isArray(wishes) && wishes.length === 0, "心事墙读取（空列表）");
 const posted = await B.postWish("冒烟测试心事", "测试");
-check(posted && posted.mine === true, "演示模式发帖成功");
-const wishesAfter = await B.listWishes();
-check(wishesAfter.length === 4, "发帖后心事墙共 4 条");
-await B.lightWish("demo-1");
-let dupRejected = false;
-await B.lightWish("demo-1").catch(function () { dupRejected = true; });
-check(dupRejected, "重复点亮被拒绝");
+check(posted && posted.mine === true, "发帖成功（桩）");
+await B.lightWish("w1");
 fire(elements.get("btn-wish"), makeTarget("none"));
 await sleep(30);
 const wishBody = elements.get("wish-body");
-check(wishBody.innerHTML.includes("演示模式"), "心事墙界面显示演示模式提示");
-check((wishBody.innerHTML.match(/wish-item/g) || []).length >= 3, "心事墙渲染示例条目");
+check(wishBody.innerHTML.includes("心事墙还空着") || wishBody.innerHTML.includes("wish-item"), "心事墙界面正常渲染（无演示横幅）");
+check(!wishBody.innerHTML.includes("演示模式"), "不再出现「演示模式」提示");
 fire(elements.get("btn-history"), makeTarget("none"));
 await sleep(20);
 check(elements.get("history-actions").innerHTML.includes("登录 / 云同步"), "命运簿含登录/云同步入口");
 
-/* ---------- 第四阶段：身份选择门（模拟已配置云端，打桩会话避免网络） ---------- */
+/* ---------- 第四阶段：身份选择门 ---------- */
 console.log("  · 身份选择门");
-const gateStub = YTM.backend.impl.worker.loginState;
 YTM.backend.impl.worker.loginState = () => Promise.resolve(null);
-YTM.config.backend.provider = "worker";
 fire(screens, makeTarget("#btn-start"));
 await sleep(250);
 const gate = elements.get("screen-gate");
-check(gate.classList.contains("active"), "配置云端后：开始占卜 → 身份选择门");
+check(gate.classList.contains("active"), "开始占卜 → 身份选择门");
 check(gate.innerHTML.includes("研途之门前"), "身份门标题渲染");
 check(gate.innerHTML.includes("匿名进入研途"), "身份门含「匿名进入」");
-check(gate.innerHTML.includes("注册新账号并进入"), "身份门含注册入口");
+check(gate.innerHTML.includes("账号密码登录"), "身份门含「账号密码登录」");
 check(gate.innerHTML.includes("gate-name") && gate.innerHTML.includes("gate-pass"), "身份门含登录表单");
+check(gate.innerHTML.includes("pass-toggle"), "密码框含「显示/隐藏密码」切换");
 fire(screens, makeTarget("#btn-gate-anon"));
 await sleep(250);
 check(theme.classList.contains("active"), "匿名进入 → 主题页");
-YTM.backend.impl.worker.loginState = gateStub;
-YTM.config.backend.provider = "local";
 
 console.log(failures === 0 ? "\n端到端冒烟测试通过 ✔" : "\n端到端冒烟测试存在失败 ✗");
 process.exit(failures === 0 ? 0 : 1);

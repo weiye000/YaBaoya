@@ -1,8 +1,6 @@
 /* ============================================================
    研途秘典 · 后端统一接口
-   根据 config.backend 选择实现：
-   - provider="worker" → Cloudflare Worker 云端模式（生产使用）
-   - 其他              → 单机模式（离线/测试用，数据只存本机）
+   固定使用 Cloudflare Worker 云端实现（worker.js）。
    游戏核心代码只与本文件交互，不感知具体后端。
    ============================================================ */
 (function (global) {
@@ -10,11 +8,8 @@
   var YTM = global.YTM = global.YTM || {};
 
   function deviceId() {
-    /* 优先使用适配器自己的设备标识（Worker 后端由服务端签发） */
-    try {
-      var im = impl();
-      if (im && typeof im.deviceId === "function") return im.deviceId();
-    } catch (e) { /* 回退到本地 UUID */ }
+    var im = impl();
+    if (im && typeof im.deviceId === "function") return im.deviceId();
     try {
       var id = global.localStorage.getItem("ytm_device_id");
       if (!id) {
@@ -30,19 +25,14 @@
   }
 
   function impl() {
-    var cfg = (YTM.config && YTM.config.backend) || {};
-    if (cfg.provider === "worker" && YTM.backend.impl.worker) return YTM.backend.impl.worker;
-    return YTM.backend.impl.local;
+    return YTM.backend.impl.worker;
   }
 
   var api = {
     deviceId: deviceId,
 
-    /* 是否已配置云端（Worker 模式恒为 true） */
-    isCloud: function () {
-      var cfg = (YTM.config && YTM.config.backend) || {};
-      return cfg.provider === "worker";
-    },
+    /* 云端模式（固定 true：始终连接 Cloudflare 后端） */
+    isCloud: function () { return true; },
 
     /* "cloud" | "demo" */
     mode: function () { return impl().mode(); },

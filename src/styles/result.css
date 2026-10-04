@@ -540,6 +540,79 @@
   gap: 12px;
 }
 
+/* ---------------- 身份门：账号密码表单 ---------------- */
+
+.gate-anon {
+  font-size: 1.05rem;
+  padding: 16px 20px;
+}
+
+.auth-method-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(201, 164, 92, 0.25);
+  border-radius: 999px;
+  background: rgba(18, 18, 42, 0.6);
+  margin-bottom: 14px;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-3);
+  transition: all var(--t-fast);
+}
+
+.seg-btn.seg-active {
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(201, 164, 92, 0.22), rgba(201, 164, 92, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(201, 164, 92, 0.45);
+}
+
+.pass-wrap {
+  position: relative;
+}
+
+.pass-input {
+  padding-right: 46px;
+}
+
+.pass-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--ink-3);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+
+.pass-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pass-toggle:hover {
+  color: var(--gold);
+  background: rgba(201, 164, 92, 0.08);
+}
+
 /* ---------------- 管理台 ---------------- */
 
 .admin-stats {

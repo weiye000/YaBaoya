@@ -119,7 +119,31 @@
     loadAdminData();
   }
 
-  /* ---------------- 身份选择门（登录 / 注册 / 匿名进入） ---------------- */
+  /* ---------------- 身份选择门（匿名进入 / 账号密码登录） ---------------- */
+
+  var authMode = "login"; /* 当前表单模式：login | register */
+  var ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var ICON_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.5 5.2A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3 3.9M6.6 6.6A16 16 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4.2-1"/></svg>';
+
+  function authSubmitLabel(ctx) {
+    if (authMode === "login") return ctx === "gate" ? "登录并进入" : "登录";
+    return ctx === "gate" ? "注册并进入" : "注册新账号";
+  }
+
+  function authFormHtml(ctx) {
+    var p = ctx === "gate" ? "gate" : "account";
+    return '<div class="segmented" role="tablist" aria-label="登录或注册">' +
+      '<button class="seg-btn' + (authMode === "login" ? " seg-active" : "") + '" type="button" data-auth-mode="login">登录</button>' +
+      '<button class="seg-btn' + (authMode === "register" ? " seg-active" : "") + '" type="button" data-auth-mode="register">注册</button>' +
+      '</div>' +
+      '<input id="' + p + '-name" class="account-input" type="text" maxlength="16" placeholder="用户名（2-16 位）" autocomplete="username">' +
+      '<div class="pass-wrap">' +
+      '<input id="' + p + '-pass" class="account-input pass-input" type="password" placeholder="密码（6-32 位）" autocomplete="current-password">' +
+      '<button class="pass-toggle" type="button" data-pass-target="' + p + '-pass" aria-label="显示密码" aria-pressed="false">' + ICON_EYE + '</button>' +
+      '</div>' +
+      '<p id="' + p + '-error" class="account-error" hidden></p>' +
+      '<button id="btn-' + p + '-submit" class="btn btn-primary btn-wide" type="button">' + authSubmitLabel(ctx) + '</button>';
+  }
 
   function renderGate() {
     var body = $("screen-gate");
@@ -137,7 +161,6 @@
     var body = $("screen-gate");
     if (!body) return;
     var user = YTM.backend.api.user();
-    var cloud = YTM.backend.api.isCloud();
     if (user) {
       body.innerHTML =
         '<div class="screen-body">' +
@@ -160,20 +183,15 @@
       '<button class="btn-back" type="button" data-nav="home">返回</button>' +
       '<div class="screen-head">' +
       '<h1 class="screen-title">研途之门前</h1>' +
-      '<p class="screen-subtitle">' + (cloud ? "登录后命运簿与你同行；不登录也可直接进入" : "云端未配置 · 当前为本地模式（可选，见 README）") + '</p>' +
+      '<p class="screen-subtitle">选择你的身份，踏入研途</p>' +
       '</div>' +
-      '<div class="account-form">' +
-      '<input id="gate-name" class="account-input" type="text" maxlength="16" placeholder="用户名（2-16 位）" autocomplete="username">' +
-      '<input id="gate-pass" class="account-input" type="password" placeholder="密码（6-32 位）" autocomplete="current-password">' +
-      '<p id="gate-error" class="account-error" hidden></p>' +
-      '<div class="account-actions">' +
-      '<button id="btn-gate-login" class="btn btn-primary btn-wide" type="button">登录并进入</button>' +
-      '<button id="btn-gate-register" class="btn btn-ghost btn-wide" type="button">注册新账号并进入</button>' +
-      '</div>' +
-      '</div>' +
+      '<button id="btn-gate-anon" class="btn btn-primary btn-wide gate-anon" type="button">匿名进入研途</button>' +
       '<div class="gate-divider"><span></span>或<span></span></div>' +
-      '<button id="btn-gate-anon" class="btn btn-ghost btn-wide" type="button">匿名进入研途</button>' +
-      '<p class="account-note dim">' + (cloud ? "匿名玩家使用设备身份与 8 位同步码，可随时在命运簿里升级为账号。" : "不配置云端也完全不影响游戏，数据保存在本机。") + '</p>' +
+      '<div class="account-form">' +
+      '<p class="auth-method-title">账号密码登录</p>' +
+      authFormHtml("gate") +
+      '</div>' +
+      '<p class="account-note dim">匿名玩家数据只保存在当前设备；注册账号后，命运簿与图鉴自动跨设备同步。</p>' +
       '</div>';
   }
 
@@ -221,8 +239,7 @@
     }).join("");
     $("screen-theme").innerHTML =
       '<div class="screen-body">' +
-      '<button class="btn-back" type="button" data-nav="' +
-      (YTM.backend.api.isCloud() ? "gate" : "home") + '">返回</button>' +
+      '<button class="btn-back" type="button" data-nav="gate">返回</button>' +
       '<div class="screen-head">' +
       '<h1 class="screen-title">选择占卜主题</h1>' +
       '<p class="screen-subtitle">这一次，你想问命运什么？</p>' +
@@ -649,13 +666,6 @@
   function renderSync(state) {
     var body = $("account-body");
     if (!body) return;
-    if (!YTM.backend.api.isCloud()) {
-      body.innerHTML =
-        '<p class="account-note">当前是<strong>单机模式</strong>，命运簿只保存在本机。</p>' +
-        '<p class="account-note dim">云端功能（账号登录 / 云同步 / 心事墙）需要部署 Cloudflare Worker 后端：' +
-        '把 <code>src/config.backend.js</code> 的 <code>provider</code> 设为 <code>"worker"</code> 并按 README「六、部署」执行。</p>';
-      return;
-    }
     if (state && state.username) {
       body.innerHTML =
         '<p class="account-user">当前账户：<span class="u-gold">' + esc(state.username) + '</span></p>' +
@@ -666,26 +676,12 @@
         '<p class="account-note dim">登录状态下，命运簿与图鉴自动按账号同步——换任何设备登录同一账号，数据都在。</p>';
       return;
     }
-    var code = YTM.backend.api.getSyncCode();
     body.innerHTML =
       '<div class="account-form">' +
-      '<input id="account-name" class="account-input" type="text" maxlength="16" placeholder="用户名（2-16 位）" autocomplete="username">' +
-      '<input id="account-pass" class="account-input" type="password" placeholder="密码（6-32 位）" autocomplete="current-password">' +
-      '<p id="account-error" class="account-error" hidden></p>' +
-      '<div class="account-actions">' +
-      '<button id="btn-login" class="btn btn-primary btn-wide" type="button">登录</button>' +
-      '<button id="btn-register" class="btn btn-ghost btn-wide" type="button">注册新账号</button>' +
+      '<p class="auth-method-title">账号密码登录</p>' +
+      authFormHtml("account") +
       '</div>' +
-      '</div>' +
-      '<p class="history-sync-line">访客模式 · 同步码 ' + esc(code) + '</p>' +
-      '<div class="account-form">' +
-      '<input id="sync-input" class="account-input" type="text" maxlength="8" placeholder="输入其他设备的同步码绑定" autocomplete="off">' +
-      '<div class="account-actions">' +
-      '<button id="btn-bind" class="btn btn-ghost btn-wide" type="button">绑定同步码</button>' +
-      '<button id="btn-reset" class="text-link" type="button">更换我的同步码</button>' +
-      '</div>' +
-      '</div>' +
-      '<p class="account-note dim">注册账号后自动按账号同步；不登录也可用同步码跨设备（像 Wi-Fi 密码一样分享）。</p>';
+      '<p class="account-note dim">注册账号后命运簿与图鉴自动跨设备同步；匿名玩家数据只保存在当前设备。</p>';
   }
 
   function openAccount() {
@@ -712,9 +708,7 @@
     };
     if (!/^[\w\u4e00-\u9fa5-]{2,16}$/.test(name)) { showErr("用户名需 2-16 位（字母/数字/中文/下划线）"); return; }
     if (pass.length < 6 || pass.length > 32) { showErr("密码需 6-32 位"); return; }
-    var btn = ctx === "gate"
-      ? (kind === "login" ? $("btn-gate-login") : $("btn-gate-register"))
-      : (kind === "login" ? $("btn-login") : $("btn-register"));
+    var btn = $(ctx === "gate" ? "btn-gate-submit" : "btn-account-submit");
     if (btn) { btn.disabled = true; btn.textContent = kind === "login" ? "登录中…" : "注册中…"; }
     var p = kind === "login" ? YTM.backend.api.login(name, pass) : YTM.backend.api.register(name, pass);
     p.then(function () {
@@ -737,43 +731,13 @@
       }
     }).catch(function (err) {
       var msg = err && err.message ? err.message : "操作失败";
-      if (/Function not found|FUNCTION_NOT_FOUND|ResourceNotFound|not found|FunctionName|云函数|未就绪/.test(msg)) {
-        msg = "云函数 auth 未找到或未部署成功：请在开发者工具里粘贴最新代码并「上传并部署：云端安装依赖」（见 README）。原始信息：" + msg;
-      }
       showErr(msg);
-      if (btn) { btn.disabled = false; btn.textContent = kind === "login" ? "登录" : "注册新账号"; }
-    });
-  }
-
-  function bindSync() {
-    var input = $("sync-input");
-    var errEl = $("account-error");
-    var code = input ? input.value.trim() : "";
-    if (!/^[A-Za-z0-9]{8}$/.test(code)) {
-      if (errEl) { errEl.textContent = "同步码是 8 位字母数字"; errEl.hidden = false; }
-      return;
-    }
-    YTM.backend.api.bindSyncCode(code).then(function () {
-      toast("已绑定同步码 " + code + "，开始同步");
-      renderSync();
-      renderHistoryActions();
-      syncCloud();
-    }).catch(function (err) {
-      if (errEl) { errEl.textContent = err && err.message ? err.message : "绑定失败"; errEl.hidden = false; }
-    });
-  }
-
-  function resetSync() {
-    YTM.backend.api.resetSyncCode().then(function (code) {
-      toast("已生成新同步码 " + code);
-      renderSync();
-      renderHistoryActions();
+      if (btn) { btn.disabled = false; btn.textContent = authSubmitLabel(ctx); }
     });
   }
 
   function syncCloud() {
-    if (!YTM.backend.api.hasCloud()) return;
-    if (!YTM.backend.api.user() && !YTM.backend.api.getSyncCode()) return;
+    if (!YTM.backend.api.user()) return;
     var btn = $("btn-sync");
     if (btn) { btn.disabled = true; btn.textContent = "同步中…"; }
     var local = YTM.ui.storage.getHistory();
@@ -820,10 +784,6 @@
   function renderWish(list) {
     var body = $("wish-body");
     if (!body) return;
-    var mode = YTM.backend.api.mode();
-    var banner = mode === "demo"
-      ? '<p class="wish-banner">未连接云端 · 当前为演示模式：你看到的是示例心事。配置云服务（免费）后，所有玩家的心事都会显示在这里。</p>'
-      : "";
     var items = (list || []).map(function (w) {
       var lit = litIds.indexOf(w.id) !== -1 || w.lit;
       return '<div class="wish-item">' +
@@ -835,7 +795,7 @@
         (lit || w.mine ? " disabled" : "") + '>' + (lit ? "已点亮" : "点亮") + '</button>' +
         '</div>';
     }).join("");
-    body.innerHTML = banner +
+    body.innerHTML =
       '<div class="wish-form">' +
       '<textarea id="wish-text" class="q-input" maxlength="140" placeholder="匿名写下此刻的心事……"></textarea>' +
       '<p class="q-counter"><span id="wish-count">0</span> / 140</p>' +
@@ -898,13 +858,8 @@
       var startBtn = e.target.closest("#btn-start");
       if (startBtn) {
         YTM.ui.sound.play("click");
-        /* 已配置云端：先过「研途之门前」身份选择；单机模式直接进主题 */
-        if (YTM.backend.api.isCloud()) {
-          renderGate();
-          nav("gate");
-        } else {
-          nav("theme");
-        }
+        renderGate();
+        nav("gate");
         return;
       }
       if (e.target.closest("#btn-gate-anon")) {
@@ -917,14 +872,9 @@
         nav("theme");
         return;
       }
-      if (e.target.closest("#btn-gate-login")) {
+      if (e.target.closest("#btn-gate-submit")) {
         YTM.ui.sound.play("click");
-        submitAccount("login", "gate");
-        return;
-      }
-      if (e.target.closest("#btn-gate-register")) {
-        YTM.ui.sound.play("click");
-        submitAccount("register", "gate");
+        submitAccount(authMode, "gate");
         return;
       }
       if (e.target.closest("#btn-gate-logout")) {
@@ -1094,8 +1044,33 @@
         return;
       }
       if (e.target.closest("#btn-account-open")) { openAccount(); return; }
-      if (e.target.closest("#btn-login")) { submitAccount("login"); return; }
-      if (e.target.closest("#btn-register")) { submitAccount("register"); return; }
+      if (e.target.closest("#btn-account-submit")) { submitAccount(authMode, "modal"); return; }
+      var segBtn = e.target.closest(".seg-btn");
+      if (segBtn) {
+        authMode = segBtn.getAttribute("data-auth-mode");
+        var form = segBtn.closest(".account-form");
+        if (form) {
+          form.querySelectorAll(".seg-btn").forEach(function (b) {
+            b.classList.toggle("seg-active", b.getAttribute("data-auth-mode") === authMode);
+          });
+        }
+        var isGate = !!segBtn.closest("#screen-gate");
+        var submitBtn = $(isGate ? "btn-gate-submit" : "btn-account-submit");
+        if (submitBtn) submitBtn.textContent = authSubmitLabel(isGate ? "gate" : "modal");
+        return;
+      }
+      var passToggle = e.target.closest(".pass-toggle");
+      if (passToggle) {
+        var inputEl = $(passToggle.getAttribute("data-pass-target"));
+        if (inputEl) {
+          var showing = inputEl.type === "text";
+          inputEl.type = showing ? "password" : "text";
+          passToggle.innerHTML = showing ? ICON_EYE : ICON_EYE_OFF;
+          passToggle.setAttribute("aria-label", showing ? "显示密码" : "隐藏密码");
+          passToggle.setAttribute("aria-pressed", String(!showing));
+        }
+        return;
+      }
       if (e.target.closest("#btn-logout")) {
         YTM.backend.api.logout().then(function () {
           toast("已退出登录");
@@ -1106,8 +1081,6 @@
         });
         return;
       }
-      if (e.target.closest("#btn-bind")) { bindSync(); return; }
-      if (e.target.closest("#btn-reset")) { resetSync(); return; }
       if (e.target.closest("#btn-sync")) { syncCloud(); return; }
       if (e.target.closest("#btn-wish-post")) { postWish(); return; }
       if (e.target.closest("#btn-wish-refresh")) { openWish(); return; }
