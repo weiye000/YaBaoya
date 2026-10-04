@@ -1,26 +1,45 @@
 /**
- * 研途秘典 · 云函数「auth」（微信云开发环境）
+ * 研途秘典 · 云函数「auth」（CloudBase 环境 · Node.js）
+ *
  * 功能：
- *   - 用户名 + 密码 注册 / 登录，签发自定义登录凭证（ticket）
- *   - 管理员体系：用户名「Yaya」即管理员（register 时标记；老账号在 login 时自动补标）
- *   - 管理员登录时签发一次性 adminToken（每次登录轮换，旧令牌作废）
+ *   - 用户名 + 密码 注册 / 登录，签发 CloudBase 自定义登录凭证（Ticket）
+ *   - 管理员体系：用户名「Yaya」即管理员；登录时签发一次性 adminToken（每次轮换）
  *   - adminStats：查看注册用户列表与全局统计（需 adminToken）
  *   - adminDeleteWish：删除心事及点亮记录（需 adminToken）
+ *
  * 安全：
  *   - 密码 scrypt + 随机盐哈希存储，不保存明文
  *   - 管理操作均在云端校验令牌，前端无法伪造身份
- *   - users 集合建议在控制台设为 {"read":false,"write":false}
- *     （云函数使用管理员权限，不受该规则限制；浏览器端永远无法直读用户数据）
+ *   - 签发 Ticket 使用「自定义登录私钥」tcb_custom_login.json（与本文件同目录，已 gitignore）
+ *   - users 集合应对浏览器关闭直读；云函数以管理员权限运行，不受安全规则限制
  */
-const cloud = require("wx-server-sdk");
+const cloudbase = require("@cloudbase/node-sdk");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-const db = cloud.database();
-const users = db.collection("users");
-
-const TICKET_REFRESH = 30 * 24 * 3600 * 1000; // 登录凭证 30 天
 const ADMIN_NAME = "Yaya"; // 管理员用户名（精确匹配）
+
+/* ---------------- 初始化：优先私钥模式（可签发 Ticket） ---------------- */
+var initError = "";
+var app = null;
+var auth = null;
+try {
+  var keyPath = path.join(__dirname, "tcb_custom_login.json");
+  if (fs.existsSync(keyPath)) {
+    var cred = JSON.parse(fs.readFileSync(keyPath, "utf8"));
+    app = cloudbase.init({ env: cred.env_id, credentials: cred });
+    auth = app.auth();
+  } else {
+    initError = "未找到私钥文件 tcb_custom_login.json";
+    app = cloudbase.init({});
+  }
+} catch (e) {
+  initError = (e && e.message) || String(e);
+  app = cloudbase.init({});
+}
+const db = app.database();
+const users = db.collection("users");
 
 function hashPassword(password, salt) {
   return crypto.scryptSync(String(password), salt, 32).toString("hex");
@@ -31,33 +50,13 @@ function makeSalt() {
 function makeAdminToken() {
   return crypto.randomBytes(24).toString("hex");
 }
-/* 签发登录凭证（Ticket）：
-   优先「自定义登录私钥」——CloudBase 身份认证 v2 的标准做法；
-   私钥文件 tcb_custom_login.json 与云函数同目录（已加入 .gitignore，不会进仓库）；
-   若无私钥文件，回退到微信云开发内置的 cloud.auth().createTicket() */
-var signer = null;
-function getSigner() {
-  if (signer) return signer;
-  try {
-    var fs = require("fs");
-    var path = require("path");
-    var keyPath = path.join(__dirname, "tcb_custom_login.json");
-    if (fs.existsSync(keyPath)) {
-      var cloudbase = require("@cloudbase/node-sdk");
-      var cred = JSON.parse(fs.readFileSync(keyPath, "utf8"));
-      var cbApp = cloudbase.init({ env: cred.env_id, credentials: cred });
-      signer = function (uid) {
-        return Promise.resolve(cbApp.auth().createTicket(String(uid)));
-      };
-      return signer;
-    }
-  } catch (e) {
-    console.warn("[auth] 私钥模式不可用，回退内置 createTicket：", e && e.message);
-  }
-  signer = function (uid) {
-    return Promise.resolve(cloud.auth().createTicket(String(uid), { refresh: TICKET_REFRESH }));
-  };
-  return signer;
+
+/* 签发自定义登录 Ticket（私钥模式） */
+function createTicket(userId) {
+  if (!auth) throw new Error("登录凭证不可用：" + (initError || "私钥未配置"));
+  var uid = String(userId);
+  if (uid.length < 4 || uid.length > 32) throw new Error("用户标识长度不合法");
+  return auth.createTicket(uid);
 }
 
 /* 校验管理员令牌：匹配 users 里 Yaya 记录的当前 token */
@@ -81,13 +80,13 @@ async function buildAuthResult(user) {
     role = "admin";
     await users.doc(user._id).update({ role: "admin" }).catch(function () {});
   }
-  var ticket = await getSigner()(user._id);
+  var ticket = createTicket(user._id);
   if (role === "admin") {
     var token = makeAdminToken();
     await users.doc(user._id).update({ adminToken: token }).catch(function () {});
-    return { code: 0, ticket, username: user.username, role: "admin", adminToken: token };
+    return { code: 0, ticket: ticket, username: user.username, role: "admin", adminToken: token };
   }
-  return { code: 0, ticket, username: user.username, role: "user" };
+  return { code: 0, ticket: ticket, username: user.username, role: "user" };
 }
 
 exports.main = async (event) => {
@@ -104,26 +103,26 @@ exports.main = async (event) => {
       if (password.length < 6 || password.length > 32) {
         return { code: 1, message: "密码需 6-32 位" };
       }
-      const exist = await users.where({ username }).count();
+      const exist = await users.where({ username: username }).count();
       if (exist.total > 0) {
         return { code: 1, message: "这个用户名已被注册" };
       }
       const salt = makeSalt();
       const doc = {
-        username,
-        salt,
+        username: username,
+        salt: salt,
         hash: hashPassword(password, salt),
         role: username === ADMIN_NAME ? "admin" : "user",
         createdAt: Date.now()
       };
-      const res = await users.add({ data: doc });
-      doc._id = res._id;
+      const res = await users.add(doc);
+      doc._id = res.id || res._id;
       return buildAuthResult(doc);
     }
 
     /* ---------------- 登录 ---------------- */
     if (action === "login") {
-      const found = await users.where({ username }).limit(1).get();
+      const found = await users.where({ username: username }).limit(1).get();
       if (!found.data.length) {
         return { code: 1, message: "用户名不存在" };
       }
@@ -169,6 +168,17 @@ exports.main = async (event) => {
       await db.collection("wishes").doc(id).remove().catch(function () {});
       await db.collection("lights").where({ wishId: id }).remove().catch(function () {});
       return { code: 0 };
+    }
+
+    /* ---------------- 自检：不写数据，仅报告运行环境 ---------------- */
+    if (action === "ping") {
+      return {
+        code: 0,
+        message: "pong",
+        signerReady: !!auth,
+        initError: initError,
+        nodeVersion: process.version
+      };
     }
 
     return { code: 1, message: "未知操作" };

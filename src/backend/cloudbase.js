@@ -184,7 +184,7 @@
   }
 
   YTM.backend.impl.cloudbase = {
-    mode: "cloud",
+    mode: function () { return "cloud"; },
 
     ready: function () {
       return init(YTM.config && YTM.config.backend);

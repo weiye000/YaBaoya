@@ -36,7 +36,7 @@
   }
 
   YTM.backend.impl.local = {
-    mode: "demo",
+    mode: function () { return "demo"; },
 
     ready: function () { return Promise.resolve(true); },
 

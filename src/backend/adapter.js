@@ -1,8 +1,9 @@
 /* ============================================================
    研途秘典 · 后端统一接口
    根据 config.backend 自动选择：
-   - 填了 envId → CloudBase 云端模式（匿名登录 + 同步码）
-   - 未填 → 本地演示模式（游戏照常单机运行）
+   - provider="worker" → Cloudflare Worker 云端模式（推荐）
+   - 填了 envId → CloudBase 云端模式（旧方案，保留兼容）
+   - 都未配置 → 本地演示模式（游戏照常单机运行）
    游戏核心代码只与本文件交互，不感知具体后端。
    ============================================================ */
 (function (global) {
@@ -10,6 +11,11 @@
   var YTM = global.YTM = global.YTM || {};
 
   function deviceId() {
+    /* 优先使用适配器自己的设备标识（如 Worker 后端由服务端签发） */
+    try {
+      var im = impl();
+      if (im && typeof im.deviceId === "function") return im.deviceId();
+    } catch (e) { /* 回退到本地 UUID */ }
     try {
       var id = global.localStorage.getItem("ytm_device_id");
       if (!id) {
@@ -26,20 +32,23 @@
 
   function impl() {
     var cfg = (YTM.config && YTM.config.backend) || {};
-    return cfg.envId ? YTM.backend.impl.cloudbase : YTM.backend.impl.local;
+    if (cfg.provider === "worker" && YTM.backend.impl.worker) return YTM.backend.impl.worker;
+    if (cfg.envId && YTM.backend.impl.cloudbase) return YTM.backend.impl.cloudbase;
+    return YTM.backend.impl.local;
   }
 
   var api = {
     deviceId: deviceId,
 
-    /* 是否已配置云端 */
+    /* 是否已配置云端（Worker 模式恒为 true；CloudBase 模式看 envId） */
     isCloud: function () {
       var cfg = (YTM.config && YTM.config.backend) || {};
+      if (cfg.provider === "worker") return true;
       return !!cfg.envId;
     },
 
     /* "cloud" | "demo" */
-    mode: function () { return impl().mode; },
+    mode: function () { return impl().mode(); },
 
     ready: function () { return impl().ready(); },
 

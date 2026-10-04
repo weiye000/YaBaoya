@@ -7,3 +7,10 @@ scripts/artifacts/
 tcb_custom_login*.json
 **/tcb_custom_login*.json
 scripts/cloudfunctions/auth/tcb_custom_login.json
+
+# Cloudflare 部署产物与密钥
+cloudflare/public/
+cloudflare/.session-secret
+cloudflare/.dev.vars
+cloudflare/.wrangler/
+.cf-token

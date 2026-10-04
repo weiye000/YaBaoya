@@ -114,6 +114,7 @@ const files = [
   "src/game/interpretation.js",
   "src/config.backend.js",
   "src/backend/local.js",
+  "src/backend/worker.js",
   "src/backend/cloudbase.js",
   "src/backend/adapter.js",
   "src/ui/starfield.js",
@@ -127,6 +128,7 @@ for (const f of files) {
   await import(pathToFileURL(path.resolve(f)).href);
   if (f === "src/config.backend.js") {
     /* 冒烟测试强制单机模式（身份门测试会临时模拟云端） */
+    globalThis.YTM.config.backend.provider = "local";
     globalThis.YTM.config.backend.envId = "";
   }
 }
@@ -245,8 +247,9 @@ check(theme.classList.contains("active"), "「再问一次」回到主题页");
 console.log("  · 后端演示模式");
 const B = YTM.backend.api;
 check(B.mode() === "demo" && !B.isCloud(), "未配置时后端为演示模式");
-check(YTM.backend.impl.cloudbase && YTM.backend.impl.cloudbase.mode === "cloud", "CloudBase 适配器（含微信云开发降级）已加载");
-check(YTM.backend.impl.local && YTM.backend.impl.local.mode === "demo", "本地适配器已加载");
+check(YTM.backend.impl.cloudbase && YTM.backend.impl.cloudbase.mode() === "cloud", "CloudBase 适配器（含微信云开发降级）已加载");
+check(YTM.backend.impl.local && YTM.backend.impl.local.mode() === "demo", "本地适配器已加载");
+check(YTM.backend.impl.worker && YTM.backend.impl.worker.mode() === "cloud", "Cloudflare Worker 适配器已加载");
 check(B.getSyncCode() === null, "演示模式无同步码");
 check(B.user() === null, "演示模式无账号");
 const demoState = await B.loginState();
