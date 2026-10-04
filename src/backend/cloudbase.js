@@ -43,8 +43,14 @@
     return auth.anonymousAuthProvider().signIn();
   }
 
-  /* 自定义登录（云函数签发 ticket）：兼容两代 API */
+  /* 自定义登录（云函数签发 ticket）：
+     v2 标准写法 → setCustomSignFunc 提供取票函数 + signInWithCustomTicket() 无参登录
+     兼容写法 → signInWithCustomTicket(ticket) / v1 customAuthProvider().signIn(ticket) */
   function signInWithTicket(ticket) {
+    if (typeof auth.setCustomSignFunc === "function" && typeof auth.signInWithCustomTicket === "function") {
+      return auth.setCustomSignFunc(function () { return Promise.resolve(ticket); })
+        .then(function () { return auth.signInWithCustomTicket(); });
+    }
     if (typeof auth.signInWithCustomTicket === "function") {
       return auth.signInWithCustomTicket(ticket);
     }
@@ -87,7 +93,7 @@
     loading = loadScript(SCRIPT).then(function () {
       var tcb = global.cloudbase;
       if (!tcb) throw new Error("SDK 未就绪");
-      app = tcb.init({ env: cfg.envId });
+      app = tcb.init({ env: cfg.envId, region: cfg.region || "ap-shanghai" });
       db = app.database();
       auth = app.auth({ persistence: "local" });
       ready = true;
