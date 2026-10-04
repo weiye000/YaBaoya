@@ -115,7 +115,6 @@ const files = [
   "src/config.backend.js",
   "src/backend/local.js",
   "src/backend/worker.js",
-  "src/backend/cloudbase.js",
   "src/backend/adapter.js",
   "src/ui/starfield.js",
   "src/ui/sound.js",
@@ -129,7 +128,6 @@ for (const f of files) {
   if (f === "src/config.backend.js") {
     /* 冒烟测试强制单机模式（身份门测试会临时模拟云端） */
     globalThis.YTM.config.backend.provider = "local";
-    globalThis.YTM.config.backend.envId = "";
   }
 }
 
@@ -243,14 +241,13 @@ fire(screens, makeTarget("#btn-again"));
 await sleep(200);
 check(theme.classList.contains("active"), "「再问一次」回到主题页");
 
-/* ---------- 第三阶段：后端演示模式（未配置 CloudBase） ---------- */
-console.log("  · 后端演示模式");
+/* ---------- 第三阶段：单机（演示）模式 ---------- */
+console.log("  · 单机模式");
 const B = YTM.backend.api;
-check(B.mode() === "demo" && !B.isCloud(), "未配置时后端为演示模式");
-check(YTM.backend.impl.cloudbase && YTM.backend.impl.cloudbase.mode() === "cloud", "CloudBase 适配器（含微信云开发降级）已加载");
-check(YTM.backend.impl.local && YTM.backend.impl.local.mode() === "demo", "本地适配器已加载");
+check(B.mode() === "demo" && !B.isCloud(), "未配置云端时为单机模式");
+check(YTM.backend.impl.local && YTM.backend.impl.local.mode() === "demo", "单机适配器已加载");
 check(YTM.backend.impl.worker && YTM.backend.impl.worker.mode() === "cloud", "Cloudflare Worker 适配器已加载");
-check(B.getSyncCode() === null, "演示模式无同步码");
+check(B.getSyncCode() === null, "单机模式无同步码");
 check(B.user() === null, "演示模式无账号");
 const demoState = await B.loginState();
 check(demoState === null, "演示模式登录状态为 null");
@@ -280,9 +277,11 @@ fire(elements.get("btn-history"), makeTarget("none"));
 await sleep(20);
 check(elements.get("history-actions").innerHTML.includes("登录 / 云同步"), "命运簿含登录/云同步入口");
 
-/* ---------- 第四阶段：身份选择门（模拟已配置云端） ---------- */
+/* ---------- 第四阶段：身份选择门（模拟已配置云端，打桩会话避免网络） ---------- */
 console.log("  · 身份选择门");
-YTM.config.backend.envId = "cloud1-smoke-fake";
+const gateStub = YTM.backend.impl.worker.loginState;
+YTM.backend.impl.worker.loginState = () => Promise.resolve(null);
+YTM.config.backend.provider = "worker";
 fire(screens, makeTarget("#btn-start"));
 await sleep(250);
 const gate = elements.get("screen-gate");
@@ -294,7 +293,8 @@ check(gate.innerHTML.includes("gate-name") && gate.innerHTML.includes("gate-pass
 fire(screens, makeTarget("#btn-gate-anon"));
 await sleep(250);
 check(theme.classList.contains("active"), "匿名进入 → 主题页");
-YTM.config.backend.envId = "";
+YTM.backend.impl.worker.loginState = gateStub;
+YTM.config.backend.provider = "local";
 
 console.log(failures === 0 ? "\n端到端冒烟测试通过 ✔" : "\n端到端冒烟测试存在失败 ✗");
 process.exit(failures === 0 ? 0 : 1);

@@ -274,7 +274,7 @@ try {
   check(await cdp.eval(`document.querySelector('.collection-progress').textContent.includes('5 / 22')`), "移动：图鉴进度为 5/22");
   await cdp.shot("08-history-mobile.png");
   await cdp.eval(`document.querySelector('#btn-account-open').click()`); await sleep(200);
-  check(await cdp.eval(`document.querySelector('#account-body').textContent.includes('云同步尚未配置')`), "移动：未配置时同步设置显示配置指引");
+  check(await cdp.eval(`document.querySelector('#account-body').textContent.includes('单机模式')`), "移动：单机模式显示说明文案");
   await cdp.shot("09-sync-mobile.png");
   await cdp.eval(`document.querySelectorAll('[data-close="modal-account"]')[0].click()`); await sleep(200);
   await cdp.eval(`document.querySelectorAll('[data-close="modal-history"]')[0].click()`); await sleep(200);

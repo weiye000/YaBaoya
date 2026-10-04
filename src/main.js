@@ -651,16 +651,9 @@
     if (!body) return;
     if (!YTM.backend.api.isCloud()) {
       body.innerHTML =
-        '<p class="account-note">云同步尚未配置。它是免费且可选的：</p>' +
-        '<ol class="account-steps">' +
-        '<li>mp.weixin.qq.com 注册一个微信小程序（个人主体，免费）</li>' +
-        '<li>微信开发者工具 → 导入小程序 → 点「云开发」开通环境（地域选上海）</li>' +
-        '<li>云开发控制台创建集合 wishes / lights / readings / users，权限用自定义规则 {"read":true,"write":true}</li>' +
-        '<li>云开发控制台 → 云函数 → 新建云函数「auth」，粘贴 scripts/cloudfunctions/auth 下的两个文件并部署</li>' +
-        '<li>「设置 → 安全配置 → WEB 安全域名」加入你的前端域名</li>' +
-        '<li>把环境 ID 填入 src/config.backend.js</li>' +
-        '</ol>' +
-        '<p class="account-note dim">不配置也完全不影响游戏本身，命运簿照常保存在本机。</p>';
+        '<p class="account-note">当前是<strong>单机模式</strong>，命运簿只保存在本机。</p>' +
+        '<p class="account-note dim">云端功能（账号登录 / 云同步 / 心事墙）需要部署 Cloudflare Worker 后端：' +
+        '把 <code>src/config.backend.js</code> 的 <code>provider</code> 设为 <code>"worker"</code> 并按 README「六、部署」执行。</p>';
       return;
     }
     if (state && state.username) {

@@ -1,7 +1,7 @@
 /**
  * 研途秘典 · 后端适配器（Cloudflare Worker）
  *
- * 与 cloudbase.js 提供完全相同的接口，但底层是自家 Worker 的 REST 接口：
+ * 与 local.js 提供完全相同的接口，但底层是自家 Worker 的 REST 接口：
  *   - 匿名会话：/api/session（设备身份 + 签名令牌）
  *   - 账号：/api/register、/api/login（客户端 PBKDF2 派生，密码明文不出浏览器）
  *   - 命运簿：/api/history（登录按账号、访客按 8 位同步码）
