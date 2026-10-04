@@ -34,28 +34,48 @@
     });
   }
 
+  /* 匿名登录（兼容 v2 与 v1 两代 SDK API）：
+     v2: auth.signInAnonymously()  /  v1: auth.anonymousAuthProvider().signIn() */
+  function signInAnonymous() {
+    if (typeof auth.signInAnonymously === "function") {
+      return auth.signInAnonymously();
+    }
+    return auth.anonymousAuthProvider().signIn();
+  }
+
+  /* 自定义登录（云函数签发 ticket）：兼容两代 API */
+  function signInWithTicket(ticket) {
+    if (typeof auth.signInWithCustomTicket === "function") {
+      return auth.signInWithCustomTicket(ticket);
+    }
+    return auth.customAuthProvider().signIn(ticket);
+  }
+
+  /* 当前有效登录态（统一校验 uid） */
+  function validLoginState() {
+    return auth.getLoginState().then(function (state) {
+      return (state && state.user && state.user.uid) ? state : null;
+    }).catch(function () { return null; });
+  }
+
   /* 建立会话：
-     - 已登录（自定义登录）→ 直接使用
-     - 无效/空登录态 → 清除后走未登录模式
-     - anonymousLogin=false（微信环境）→ 跳过匿名登录，直接未登录模式
-     - 其他 → 尝试匿名登录，失败/空凭证 → 清除并降级未登录模式 */
+     - 已有有效登录态（自定义登录/匿名）→ 直接使用
+     - 无登录态 → 匿名登录（需控制台开启「匿名登录」）
+     - 匿名不可用 → 未登录模式（需控制台开启未登录访问权限） */
   function ensureSession() {
     return init(YTM.config.backend).then(function (ok) {
       if (!ok) throw new Error("云服务未就绪");
       var cfg = YTM.config.backend || {};
-      return auth.getLoginState().then(function (state) {
-        if (state && state.user && state.user.uid) return state;
-        if (state) {
-          /* 无效/空登录态（如微信环境的伪匿名态）：清掉，避免带坏凭证 */
-          return auth.signOut().catch(function () {}).then(function () { return null; });
-        }
+      return validLoginState().then(function (state) {
+        if (state) return state;
         if (cfg.anonymousLogin === false) return null; /* 未登录模式 */
-        return auth.anonymousAuthProvider().signIn().then(function (s) {
-          if (s && s.user && s.user.uid) return s;
-          return auth.signOut().catch(function () {}).then(function () { return null; });
+        return signInAnonymous().then(function () {
+          return validLoginState();
+        }).catch(function () {
+          return null; /* 匿名不可用：降级未登录模式 */
         });
       }).catch(function () {
-        return null; /* 未登录模式 */
+        return null;
       });
     });
   }
@@ -178,7 +198,7 @@
         } else {
           adminToken = null;
         }
-        return auth.customAuthProvider().signIn(r.ticket).catch(function (e) {
+        return signInWithTicket(r.ticket).catch(function (e) {
           throw new Error("登录凭证签发失败：" + errText(e));
         }).then(function () {
           rememberUser(r.username);
@@ -194,7 +214,7 @@
         } else {
           adminToken = null;
         }
-        return auth.customAuthProvider().signIn(r.ticket).catch(function (e) {
+        return signInWithTicket(r.ticket).catch(function (e) {
           throw new Error("登录凭证签发失败：" + errText(e));
         }).then(function () {
           rememberUser(r.username);
