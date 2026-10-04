@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 *.log
 scripts/artifacts/
+
+# 自定义登录私钥（管理员凭证，绝不提交到仓库）
+tcb_custom_login*.json
+**/tcb_custom_login*.json
+scripts/cloudfunctions/auth/tcb_custom_login.json

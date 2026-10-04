@@ -31,8 +31,33 @@ function makeSalt() {
 function makeAdminToken() {
   return crypto.randomBytes(24).toString("hex");
 }
-function issueTicket(userId) {
-  return cloud.auth().createTicket(String(userId), { refresh: TICKET_REFRESH });
+/* 签发登录凭证（Ticket）：
+   优先「自定义登录私钥」——CloudBase 身份认证 v2 的标准做法；
+   私钥文件 tcb_custom_login.json 与云函数同目录（已加入 .gitignore，不会进仓库）；
+   若无私钥文件，回退到微信云开发内置的 cloud.auth().createTicket() */
+var signer = null;
+function getSigner() {
+  if (signer) return signer;
+  try {
+    var fs = require("fs");
+    var path = require("path");
+    var keyPath = path.join(__dirname, "tcb_custom_login.json");
+    if (fs.existsSync(keyPath)) {
+      var cloudbase = require("@cloudbase/node-sdk");
+      var cred = JSON.parse(fs.readFileSync(keyPath, "utf8"));
+      var cbApp = cloudbase.init({ env: cred.env_id, credentials: cred });
+      signer = function (uid) {
+        return Promise.resolve(cbApp.auth().createTicket(String(uid)));
+      };
+      return signer;
+    }
+  } catch (e) {
+    console.warn("[auth] 私钥模式不可用，回退内置 createTicket：", e && e.message);
+  }
+  signer = function (uid) {
+    return Promise.resolve(cloud.auth().createTicket(String(uid), { refresh: TICKET_REFRESH }));
+  };
+  return signer;
 }
 
 /* 校验管理员令牌：匹配 users 里 Yaya 记录的当前 token */
@@ -56,7 +81,7 @@ async function buildAuthResult(user) {
     role = "admin";
     await users.doc(user._id).update({ role: "admin" }).catch(function () {});
   }
-  var ticket = issueTicket(user._id);
+  var ticket = await getSigner()(user._id);
   if (role === "admin") {
     var token = makeAdminToken();
     await users.doc(user._id).update({ adminToken: token }).catch(function () {});
